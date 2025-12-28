@@ -1,5 +1,5 @@
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@^2.45.0';
+import { createClient } from '@supabase/supabase-js';
 
 /**
  * CONFIGURAÇÃO DO SUPABASE
@@ -11,7 +11,6 @@ const URL_PROJETO: string = 'https://oeabzurdacfmzczwhpfa.supabase.co';
 
 /**
  * CHAVE_ANON configurada com sucesso!
- * Agora o site tem permissão para ler os dados do seu banco de dados.
  */
 export const CHAVE_ANON: string = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9lYWJ6dXJkYWNmbXpjendocGZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY4OTg0ODEsImV4cCI6MjA4MjQ3NDQ4MX0.cYg2M6wD8aIdlwXsdAZk2llv3SMsc0N8OhcQuzhV5c0'; 
 

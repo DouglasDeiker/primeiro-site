@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR" class="scroll-smooth">
   <head>
@@ -15,12 +16,12 @@
             },
             colors: {
               brand: {
-                purple: '#7c3aed', // Primary Brand Color
-                darkPurple: '#4c1d95', // Hero Backgrounds
-                lightPurple: '#f3e8ff', // Accents
-                orange: '#f97316', // CTA / Secondary
-                darkOrange: '#c2410c', // CTA Hover
-                lightOrange: '#ffedd5', // Accents
+                purple: '#7c3aed', 
+                darkPurple: '#4c1d95', 
+                lightPurple: '#f3e8ff', 
+                orange: '#f97316', 
+                darkOrange: '#c2410c', 
+                lightOrange: '#ffedd5', 
               },
               dark: {
                 800: '#1e293b',
@@ -47,15 +48,17 @@
   <script type="importmap">
 {
   "imports": {
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
     "react/": "https://esm.sh/react@^19.2.3/",
     "react": "https://esm.sh/react@^19.2.3",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "lucide-react": "https://esm.sh/lucide-react@^0.561.0"
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.89.0"
   }
 }
 </script>
 </head>
   <body>
     <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
   </body>
 </html>
