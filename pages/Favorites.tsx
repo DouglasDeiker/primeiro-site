@@ -6,8 +6,8 @@ import { Heart, ArrowRight } from 'lucide-react';
 
 interface FavoritesProps {
   products: Product[];
-  favorites: string[];
-  onToggleFavorite: (productId: string) => void;
+  favorites: number[]; // Mudado para number
+  onToggleFavorite: (productId: number) => void; // Mudado para number
   onNavigate: (page: string) => void;
   onViewDetails: (product: Product) => void;
 }

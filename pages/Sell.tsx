@@ -17,7 +17,7 @@ export const Sell: React.FC<SellProps> = ({ categories, onAddProduct, onNavigate
     title: '',
     description: '',
     price: '',
-    categoryId: '',
+    categoryId: '', // Mantido string aqui para o valor do select
     condition: ItemStatus.NEW
   });
 
@@ -39,7 +39,7 @@ export const Sell: React.FC<SellProps> = ({ categories, onAddProduct, onNavigate
           ...prev,
           sellerName: user.user_metadata?.name || '',
           sellerWhatsapp: user.user_metadata?.whatsapp || '',
-          categoryId: categories.length > 0 ? categories[0].id : ''
+          categoryId: categories.length > 0 ? categories[0].id.toString() : ''
         }));
       }
     };
@@ -81,7 +81,6 @@ export const Sell: React.FC<SellProps> = ({ categories, onAddProduct, onNavigate
     if (validImageObjects.length === 0) return setError("Adicione pelo menos uma foto.");
 
     setIsSubmitting(true);
-    setUploadProgress(10);
 
     try {
       const imageUrls: string[] = [];
@@ -91,16 +90,15 @@ export const Sell: React.FC<SellProps> = ({ categories, onAddProduct, onNavigate
         const { error: uploadError } = await supabase.storage.from('product-images').upload(fileName, item.file);
         if (uploadError) throw new Error(`Erro na foto ${i+1}: ${uploadError.message}`);
         imageUrls.push(supabase.storage.from('product-images').getPublicUrl(fileName).data.publicUrl);
-        setUploadProgress(10 + ((i + 1) / validImageObjects.length) * 40);
       }
 
-      // IMPORTANTE: Aqui enviamos o categoryId (UUID) para a coluna 'category' do banco
+      // Envia os dados para o banco. Notar a conversão do categoryId para Number
       const { data, error: dbError } = await supabase.from('products').insert([{
         title: formData.title,
         description: `${formData.description}\n\nVendedor: ${formData.sellerName}\nWhats: ${formData.sellerWhatsapp}`,
         price: parseFloat(formData.price),
         images: imageUrls,
-        category: formData.categoryId, // O banco espera UUID aqui
+        category_id: parseInt(formData.categoryId), // Convertido para Number
         status: formData.condition,
         active: true,
         storeId: 'personal_1',
@@ -109,10 +107,9 @@ export const Sell: React.FC<SellProps> = ({ categories, onAddProduct, onNavigate
 
       if (dbError) throw dbError;
 
-      setUploadProgress(100);
       setSuccess(true);
       setTimeout(() => {
-        const selectedCat = categories.find(c => c.id === formData.categoryId);
+        const selectedCat = categories.find(c => c.id === parseInt(formData.categoryId));
         onAddProduct({ ...data[0], category: selectedCat?.name || 'Geral' } as Product);
         onNavigate('offers');
       }, 1500);
@@ -136,7 +133,7 @@ export const Sell: React.FC<SellProps> = ({ categories, onAddProduct, onNavigate
         <div className="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-gray-100">
           <div className="bg-brand-darkPurple p-10 text-white relative">
             <h1 className="text-3xl font-black mb-2">Vender um Item</h1>
-            <p className="text-brand-lightPurple opacity-90">Anuncie e venda rápido.</p>
+            <p className="text-brand-lightPurple opacity-90">Anuncie e venda rápido com IDs simples.</p>
           </div>
 
           {!currentUser ? (
@@ -150,8 +147,14 @@ export const Sell: React.FC<SellProps> = ({ categories, onAddProduct, onNavigate
               
               <section className="bg-brand-lightPurple/20 p-6 rounded-3xl space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <input disabled className="w-full px-5 py-4 rounded-2xl bg-gray-100 border text-gray-500" value={formData.sellerName} />
-                  <input disabled className="w-full px-5 py-4 rounded-2xl bg-gray-100 border text-gray-500" value={formData.sellerWhatsapp} />
+                  <div className="relative">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <input disabled className="w-full pl-12 pr-5 py-4 rounded-2xl bg-gray-100 border text-gray-500" value={formData.sellerName} />
+                  </div>
+                  <div className="relative">
+                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <input disabled className="w-full pl-12 pr-5 py-4 rounded-2xl bg-gray-100 border text-gray-500" value={formData.sellerWhatsapp} />
+                  </div>
                 </div>
               </section>
 
@@ -172,17 +175,17 @@ export const Sell: React.FC<SellProps> = ({ categories, onAddProduct, onNavigate
               </section>
 
               <section className="space-y-6">
-                <input name="title" required placeholder="Título do Anúncio" className="w-full px-5 py-4 rounded-2xl bg-gray-50 border outline-none" value={formData.title} onChange={handleInputChange} />
+                <input name="title" required placeholder="Título do Anúncio" className="w-full px-5 py-4 rounded-2xl bg-gray-50 border outline-none focus:ring-2 focus:ring-brand-purple" value={formData.title} onChange={handleInputChange} />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <input type="number" name="price" required placeholder="Preço (R$)" className="w-full px-5 py-4 rounded-2xl bg-gray-50 border outline-none" value={formData.price} onChange={handleInputChange} />
-                  <select name="categoryId" className="w-full px-5 py-4 rounded-2xl bg-gray-50 border outline-none" value={formData.categoryId} onChange={handleInputChange}>
+                  <input type="number" name="price" required placeholder="Preço (R$)" className="w-full px-5 py-4 rounded-2xl bg-gray-50 border outline-none focus:ring-2 focus:ring-brand-purple" value={formData.price} onChange={handleInputChange} />
+                  <select name="categoryId" className="w-full px-5 py-4 rounded-2xl bg-gray-50 border outline-none focus:ring-2 focus:ring-brand-purple cursor-pointer" value={formData.categoryId} onChange={handleInputChange}>
                     {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
                   </select>
                 </div>
-                <textarea name="description" required rows={4} placeholder="Descrição..." className="w-full px-5 py-4 rounded-2xl bg-gray-50 border outline-none resize-none" value={formData.description} onChange={handleInputChange}></textarea>
+                <textarea name="description" required rows={4} placeholder="Descrição detalhada..." className="w-full px-5 py-4 rounded-2xl bg-gray-50 border outline-none resize-none focus:ring-2 focus:ring-brand-purple" value={formData.description} onChange={handleInputChange}></textarea>
               </section>
 
-              <button type="submit" disabled={isSubmitting} className="w-full py-6 rounded-3xl font-black text-white bg-brand-orange hover:bg-brand-darkOrange shadow-xl flex items-center justify-center gap-3">
+              <button type="submit" disabled={isSubmitting} className="w-full py-6 rounded-3xl font-black text-white bg-brand-orange hover:bg-brand-darkOrange shadow-xl flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50">
                 {isSubmitting ? <Loader2 className="animate-spin" /> : "Publicar Anúncio"}
               </button>
             </form>

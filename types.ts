@@ -6,7 +6,7 @@
 export type UserRole = 'admin' | 'lojista' | 'cliente';
 
 export interface User {
-  id: string;
+  id: string; // ID de usuário permanece string pois vem do Auth (UUID)
   name: string;
   email: string;
   role: UserRole;
@@ -15,7 +15,7 @@ export interface User {
 }
 
 export interface Category {
-  id: string;
+  id: number; // Mudado para number
   name: string;
 }
 
@@ -35,7 +35,7 @@ export enum ItemStatus {
 }
 
 export interface Product {
-  id: string;
+  id: number; // Mudado para number
   storeId: string;
   userId?: string; 
   title: string;
@@ -43,7 +43,7 @@ export interface Product {
   price: number;
   images: string[];
   category: string; // Nome para exibição
-  categoryId?: string; // ID (UUID) para o banco
+  category_id?: number; // Mudado para number
   status: ItemStatus;
   createdAt: string;
   active: boolean; 

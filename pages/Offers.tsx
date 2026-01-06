@@ -8,8 +8,8 @@ interface OffersProps {
   products: Product[];
   categories: string[];
   initialCategory: string;
-  favorites: string[];
-  onToggleFavorite: (productId: string) => void;
+  favorites: number[]; // Mudado para number[]
+  onToggleFavorite: (productId: number) => void; // Mudado para number
   onViewDetails: (product: Product) => void;
   searchFocusTrigger?: number;
 }
@@ -137,7 +137,7 @@ export const Offers: React.FC<OffersProps> = ({
                   product={product} 
                   onNegotiate={handleNegotiateClick}
                   isFavorite={favorites.includes(product.id)}
-                  onToggleFavorite={onToggleFavorite}
+                  onToggleFavorite={() => onToggleFavorite(product.id)}
                   onViewDetails={onViewDetails}
                 />
               ))

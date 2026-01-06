@@ -35,7 +35,7 @@ const App: React.FC = () => {
   const [fullCategories, setFullCategories] = useState<Category[]>([]);
   const [dbCategoriesNames, setDbCategoriesNames] = useState<string[]>(CATEGORIES);
   const [heroImages, setHeroImages] = useState<string[]>([]);
-  const [favorites, setFavorites] = useState<string[]>([]);
+  const [favorites, setFavorites] = useState<number[]>([]); // Mudado para number[]
 
   const [detailProduct, setDetailProduct] = useState<Product | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -62,7 +62,7 @@ const App: React.FC = () => {
       }
       
       try {
-        // Busca produtos com JOIN na categoria
+        // Busca produtos com JOIN na categoria (usando a nova coluna category_id numérica)
         const { data: productsData, error: pError } = await supabase
           .from('products')
           .select('*, app_categories(name)')
@@ -72,7 +72,7 @@ const App: React.FC = () => {
         if (pError) {
           console.error("Erro ao buscar produtos:", pError);
           if (pError.code === '42P01') {
-            setDbError("A tabela de produtos ainda não foi criada no Supabase. Por favor, execute o script SQL de configuração.");
+            setDbError("As tabelas ainda não foram criadas no Supabase ou foram deletadas para migração.");
           } else {
             setDbError(formatSupabaseError(pError));
           }
@@ -86,7 +86,6 @@ const App: React.FC = () => {
 
         setProducts(mappedProducts);
 
-        // Busca categorias (ordenadas alfabeticamente) e slides
         const [cats, slides] = await Promise.all([
           supabase.from('app_categories').select('id, name').order('name', { ascending: true }),
           supabase.from('hero_slides').select('image_url').eq('active', true).order('display_order')
@@ -116,7 +115,7 @@ const App: React.FC = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const handleToggleFavorite = (productId: string) => {
+  const handleToggleFavorite = (productId: number) => { // Mudado para number
     setFavorites(prev => {
       const updated = prev.includes(productId) ? prev.filter(id => id !== productId) : [...prev, productId];
       localStorage.setItem('barganha_favorites', JSON.stringify(updated));
@@ -162,12 +161,12 @@ const App: React.FC = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6 text-center">
         <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl max-w-2xl w-full">
           <Database className="w-16 h-16 text-red-500 mx-auto mb-6" />
-          <h2 className="text-2xl font-black mb-4">Configuração Pendente</h2>
+          <h2 className="text-2xl font-black mb-4">Migração do Banco Necessária</h2>
           <p className="text-gray-500 mb-8 leading-relaxed">
-            {dbError}
+            As tabelas foram atualizadas para usar IDs numéricos. Por favor, execute o novo script SQL no editor do Supabase.
             <br /><br />
             <span className="text-sm font-bold bg-gray-100 p-2 rounded block">
-              Acesse o SQL Editor do Supabase e rode o script de criação das tabelas.
+              Isso apagará os produtos antigos para garantir a integridade dos novos números.
             </span>
           </p>
           <button onClick={() => window.location.reload()} className="bg-brand-purple text-white px-8 py-4 rounded-xl font-bold flex items-center gap-2 mx-auto">

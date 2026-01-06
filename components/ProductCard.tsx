@@ -7,7 +7,7 @@ interface ProductCardProps {
   product: Product;
   onNegotiate: (product: Product) => void;
   isFavorite?: boolean;
-  onToggleFavorite?: (productId: string) => void;
+  onToggleFavorite?: (productId: number) => void; // Mudado para number
   onViewDetails: (product: Product) => void;
 }
 
