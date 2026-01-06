@@ -62,7 +62,7 @@ const App: React.FC = () => {
       }
       
       try {
-        // Busca produtos com tratamento de erro específico
+        // Busca produtos com JOIN na categoria
         const { data: productsData, error: pError } = await supabase
           .from('products')
           .select('*, app_categories(name)')
@@ -71,7 +71,6 @@ const App: React.FC = () => {
 
         if (pError) {
           console.error("Erro ao buscar produtos:", pError);
-          // Se for erro de tabela inexistente (42P01), mostramos um aviso amigável
           if (pError.code === '42P01') {
             setDbError("A tabela de produtos ainda não foi criada no Supabase. Por favor, execute o script SQL de configuração.");
           } else {
@@ -87,9 +86,9 @@ const App: React.FC = () => {
 
         setProducts(mappedProducts);
 
-        // Busca categorias e slides em paralelo
+        // Busca categorias (ordenadas alfabeticamente) e slides
         const [cats, slides] = await Promise.all([
-          supabase.from('app_categories').select('id, name').order('name'),
+          supabase.from('app_categories').select('id, name').order('name', { ascending: true }),
           supabase.from('hero_slides').select('image_url').eq('active', true).order('display_order')
         ]);
 

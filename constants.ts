@@ -3,18 +3,18 @@ import { Product, Store } from './types';
 
 // LISTA DE CATEGORIAS (Fallback e Exibição)
 export const CATEGORIES = [
-  'Móveis', 
-  'Eletrônicos', 
-  'Eletrodomésticos',
-  'Ferramentas',
   'Antiguidades',
-  'Roupas', 
-  'Esporte', 
-  'Decoração', 
-  'Instrumentos',
   'Automotivo',
+  'Decoração',
+  'Eletrodomésticos',
+  'Eletrônicos', 
+  'Esporte', 
+  'Ferramentas',
   'Infantil',
+  'Instrumentos',
   'Livros',
+  'Móveis', 
+  'Roupas', 
   'Variados'
 ];
 
