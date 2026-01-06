@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ArrowRight, Zap, ChevronLeft, ChevronRight, Image as ImageIcon } from 'lucide-react';
 
 interface HeroProps {
@@ -8,7 +8,17 @@ interface HeroProps {
 
 export const Hero: React.FC<HeroProps> = ({ images = [] }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const slideImages = images.filter(img => img && img.trim() !== '');
+
+  // Filtragem defensiva para evitar o erro .trim() is not a function
+  const slideImages = useMemo(() => {
+    if (!Array.isArray(images)) return [];
+    return images.filter(img => 
+      img && 
+      typeof img === 'string' && 
+      typeof img.trim === 'function' && 
+      img.trim() !== ''
+    );
+  }, [images]);
 
   const nextImage = useCallback(() => {
     if (slideImages.length === 0) return;
@@ -42,7 +52,7 @@ export const Hero: React.FC<HeroProps> = ({ images = [] }) => {
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-orange to-yellow-400">direto para você.</span>
           </h1>
           <p className="mt-4 text-xl text-gray-300 mb-8 max-w-xl leading-relaxed mx-auto md:mx-0">
-            O Barganha Mogi seleciona as melhores oportunidades da região. Negocie com nosso time e garanta sua compra com segurança e agilidade.
+            O Barganha Mogi seleciona as melhores oportunidades da região. Negocie com nosso team e garanta sua compra com segurança e agilidade.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
             <div className="inline-flex items-center justify-center px-8 py-4 border border-transparent text-lg font-bold rounded-xl text-white bg-brand-orange hover:bg-brand-darkOrange shadow-lg shadow-brand-orange/30 transition-all">
@@ -59,7 +69,7 @@ export const Hero: React.FC<HeroProps> = ({ images = [] }) => {
              {slideImages.length > 0 ? (
                slideImages.map((img, index) => (
                  <img 
-                   key={img + index}
+                   key={`${img}-${index}`}
                    src={img} 
                    alt={`Slide ${index}`} 
                    className={`absolute inset-0 w-full h-full object-cover transition-all duration-1000 ease-in-out ${
@@ -68,7 +78,6 @@ export const Hero: React.FC<HeroProps> = ({ images = [] }) => {
                  />
                ))
              ) : (
-               /* PLACEHOLDER QUANDO NÃO HÁ IMAGENS NO BANCO */
                <div className="flex flex-col items-center justify-center text-white/20 p-12">
                  <div className="mb-4">
                     <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="opacity-20">
@@ -78,7 +87,7 @@ export const Hero: React.FC<HeroProps> = ({ images = [] }) => {
                     </svg>
                  </div>
                  <span className="font-black uppercase tracking-[0.2em] text-sm">Barganha Mogi</span>
-                 <p className="text-[10px] mt-2 opacity-50 uppercase tracking-widest">Aguardando Fotos do Banco</p>
+                 <p className="text-[10px] mt-2 opacity-50 uppercase tracking-widest">Aguardando Fotos</p>
                </div>
              )}
 

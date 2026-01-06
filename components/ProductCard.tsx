@@ -20,7 +20,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  const images = product.images.filter(img => img && img.trim() !== '');
+  // Filtragem ultra-defensiva para evitar o erro .trim() is not a function
+  const images = React.useMemo(() => {
+    if (!product || !Array.isArray(product.images)) return [];
+    return product.images.filter(img => 
+      img && 
+      typeof img === 'string' && 
+      typeof img.trim === 'function' && 
+      img.trim() !== ''
+    );
+  }, [product?.images]);
+  
   const hasImages = images.length > 0;
   const hasMultipleImages = images.length > 1;
 
@@ -74,7 +84,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               <ChevronRight className="w-5 h-5" />
             </button>
             
-            {/* Contador de Fotos */}
             <div className="absolute top-3 left-3 bg-black/50 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded-md flex items-center gap-1 z-10">
               <ImageIcon className="w-3 h-3" />
               {currentImageIndex + 1} / {images.length}

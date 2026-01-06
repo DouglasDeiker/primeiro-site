@@ -14,7 +14,7 @@ import { Register } from './pages/Register';
 import { Footer } from './components/Footer';
 import { ProductDetailsModal } from './components/ProductDetailsModal';
 import { Loader2, Database, RefreshCcw, AlertCircle } from 'lucide-react';
-import { Product, User, Category } from './types';
+import { Product, User, Category, ItemStatus } from './types';
 import { CATEGORIES } from './constants';
 import { supabase, isDatabaseConfigured } from './lib/supabase';
 
@@ -37,7 +37,6 @@ const App: React.FC = () => {
   const [heroImages, setHeroImages] = useState<string[]>([]);
   const [favorites, setFavorites] = useState<number[]>([]);
   
-  // NOVO: Estado para controlar qual categoria está ativa globalmente
   const [filterCategory, setFilterCategory] = useState<string>('Todos');
 
   const [detailProduct, setDetailProduct] = useState<Product | null>(null);
@@ -83,10 +82,26 @@ const App: React.FC = () => {
           return;
         }
 
-        const mappedProducts: Product[] = (productsData || []).map(p => ({
-          ...p,
-          category: p.app_categories?.name || 'Variados'
-        }));
+        // Sanitização profunda dos dados para evitar erros de tipo no frontend
+        const mappedProducts: Product[] = (productsData || []).map(p => {
+          // Garante que images seja um array de strings
+          let safeImages: string[] = [];
+          if (Array.isArray(p.images)) {
+            safeImages = p.images.filter(img => typeof img === 'string');
+          } else if (typeof p.images === 'string' && p.images.startsWith('http')) {
+            safeImages = [p.images];
+          }
+
+          return {
+            ...p,
+            title: String(p.title || 'Sem título'),
+            description: String(p.description || ''),
+            price: Number(p.price || 0),
+            images: safeImages,
+            category: p.app_categories?.name || 'Variados',
+            status: (p.status as ItemStatus) || ItemStatus.GOOD
+          };
+        });
 
         setProducts(mappedProducts);
 
@@ -100,8 +115,14 @@ const App: React.FC = () => {
           setDbCategoriesNames(cats.data.map(c => c.name));
         }
         
-        const manualSlides = slides.data?.map(s => s.image_url) || [];
-        const productPreviews = mappedProducts.map(p => p.images?.[0]).filter(Boolean) as string[];
+        const manualSlides = (slides.data || [])
+          .map(s => s.image_url)
+          .filter(url => typeof url === 'string' && url.trim() !== '');
+
+        const productPreviews = mappedProducts
+          .map(p => p.images?.[0])
+          .filter((img): img is string => typeof img === 'string' && img.trim() !== '');
+
         setHeroImages(manualSlides.length > 0 ? manualSlides : productPreviews.slice(0, 5));
 
       } catch (err: any) {
@@ -121,7 +142,6 @@ const App: React.FC = () => {
           ? parsed.filter(id => typeof id === 'number') 
           : [];
         setFavorites(validNumericFavs);
-        localStorage.setItem('barganha_favorites', JSON.stringify(validNumericFavs));
       } catch { 
         setFavorites([]); 
       }
@@ -139,7 +159,6 @@ const App: React.FC = () => {
   };
 
   const handleNavigate = (page: string) => {
-    // Resetar filtro se voltar para home
     if (page === 'home') setFilterCategory('Todos');
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -157,15 +176,15 @@ const App: React.FC = () => {
         return <Categories 
           categories={dbCategoriesNames}
           onSelectCategory={(cat) => { 
-            setFilterCategory(cat); // Salva a categoria escolhida
-            handleNavigate('offers'); // Navega para as ofertas
+            setFilterCategory(cat); 
+            handleNavigate('offers'); 
           }} 
         />;
       case 'offers': 
         return <Offers 
           products={products} 
           categories={dbCategoriesNames} 
-          initialCategory={filterCategory} // Passa a categoria selecionada
+          initialCategory={filterCategory} 
           favorites={favorites} 
           onToggleFavorite={handleToggleFavorite} 
           onViewDetails={(p) => { setDetailProduct(p); setIsDetailModalOpen(true); }} 
@@ -218,7 +237,7 @@ const App: React.FC = () => {
         currentPage={currentPage} 
         onNavigate={handleNavigate} 
         onSearchClick={() => { 
-          setFilterCategory('Todos'); // Reseta filtro ao buscar
+          setFilterCategory('Todos'); 
           handleNavigate('offers'); 
           setSearchIntentTrigger(t => t + 1); 
         }} 

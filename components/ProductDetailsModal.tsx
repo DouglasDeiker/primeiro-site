@@ -20,7 +20,10 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
 
   if (!isOpen || !product) return null;
 
-  const images = product.images.filter(img => img && img.trim() !== '');
+  // Garantir que product.images seja um array e que cada item seja uma string válida
+  const rawImages = Array.isArray(product.images) ? product.images : [];
+  const images = rawImages.filter(img => typeof img === 'string' && img.trim() !== '');
+  
   const hasImages = images.length > 0;
   
   const handleNegotiate = () => {
