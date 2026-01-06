@@ -13,7 +13,7 @@ import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Footer } from './components/Footer';
 import { ProductDetailsModal } from './components/ProductDetailsModal';
-import { Loader2, Database, RefreshCcw, MessageCircle } from 'lucide-react';
+import { Loader2, Database, RefreshCcw } from 'lucide-react';
 import { Product, User, Category } from './types';
 import { CATEGORIES } from './constants';
 import { supabase, isDatabaseConfigured } from './lib/supabase';
@@ -56,9 +56,13 @@ const App: React.FC = () => {
     });
 
     const fetchData = async () => {
-      if (!isDatabaseConfigured) return;
+      if (!isDatabaseConfigured) {
+        setIsInitializing(false);
+        return;
+      }
+      
       try {
-        // Busca produtos incluindo o nome da categoria relacionada
+        // Busca produtos com tratamento de erro específico
         const { data: productsData, error: pError } = await supabase
           .from('products')
           .select('*, app_categories(name)')
@@ -66,11 +70,16 @@ const App: React.FC = () => {
           .order('id', { ascending: false });
 
         if (pError) {
-          setDbError(formatSupabaseError(pError));
+          console.error("Erro ao buscar produtos:", pError);
+          // Se for erro de tabela inexistente (42P01), mostramos um aviso amigável
+          if (pError.code === '42P01') {
+            setDbError("A tabela de produtos ainda não foi criada no Supabase. Por favor, execute o script SQL de configuração.");
+          } else {
+            setDbError(formatSupabaseError(pError));
+          }
           return;
         }
 
-        // Mapeia para garantir que 'category' seja o nome em string
         const mappedProducts: Product[] = (productsData || []).map(p => ({
           ...p,
           category: p.app_categories?.name || 'Variados'
@@ -78,6 +87,7 @@ const App: React.FC = () => {
 
         setProducts(mappedProducts);
 
+        // Busca categorias e slides em paralelo
         const [cats, slides] = await Promise.all([
           supabase.from('app_categories').select('id, name').order('name'),
           supabase.from('hero_slides').select('image_url').eq('active', true).order('display_order')
@@ -93,7 +103,7 @@ const App: React.FC = () => {
         setHeroImages(manualSlides.length > 0 ? manualSlides : productPreviews.slice(0, 5));
 
       } catch (err) {
-        console.error(err);
+        console.error("Erro crítico de inicialização:", err);
       } finally {
         setIsInitializing(false);
       }
@@ -150,11 +160,17 @@ const App: React.FC = () => {
 
   if (dbError) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-        <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl max-w-2xl w-full text-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6 text-center">
+        <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl max-w-2xl w-full">
           <Database className="w-16 h-16 text-red-500 mx-auto mb-6" />
-          <h2 className="text-2xl font-black mb-4">Erro de Banco</h2>
-          <p className="text-gray-500 mb-8">{dbError}</p>
+          <h2 className="text-2xl font-black mb-4">Configuração Pendente</h2>
+          <p className="text-gray-500 mb-8 leading-relaxed">
+            {dbError}
+            <br /><br />
+            <span className="text-sm font-bold bg-gray-100 p-2 rounded block">
+              Acesse o SQL Editor do Supabase e rode o script de criação das tabelas.
+            </span>
+          </p>
           <button onClick={() => window.location.reload()} className="bg-brand-purple text-white px-8 py-4 rounded-xl font-bold flex items-center gap-2 mx-auto">
             <RefreshCcw className="w-5 h-5" /> Tentar Novamente
           </button>
