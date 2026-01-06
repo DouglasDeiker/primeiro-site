@@ -15,7 +15,7 @@ export interface User {
 }
 
 export interface Category {
-  id: number; // Mudado para number
+  id: number; 
   name: string;
 }
 
@@ -35,15 +35,15 @@ export enum ItemStatus {
 }
 
 export interface Product {
-  id: number; // Mudado para number
+  id: number;
   storeId: string;
   userId?: string; 
   title: string;
   description: string;
   price: number;
-  images: string[];
-  category: string; // Nome para exibição
-  category_id?: number; // Mudado para number
+  images: string[]; // Sempre uma lista de strings
+  category: string; // Nome para exibição (ex: "Eletrônicos")
+  category_id?: number; 
   status: ItemStatus;
   createdAt: string;
   active: boolean; 

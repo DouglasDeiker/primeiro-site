@@ -17,18 +17,19 @@ export const Sell: React.FC<SellProps> = ({ categories, onAddProduct, onNavigate
     title: '',
     description: '',
     price: '',
-    categoryId: '', // Mantido string aqui para o valor do select
+    categoryId: '', 
     condition: ItemStatus.NEW
   });
 
-  const [images, setImages] = useState<( { preview: string; file: File } | null )[]>([null, null, null]);
+  // Aumentado para 6 slots de imagem
+  const [images, setImages] = useState<( { preview: string; file: File } | null )[]>(Array(6).fill(null));
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   
-  const fileInputRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
+  // Refs para 6 inputs de arquivo
+  const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -92,13 +93,12 @@ export const Sell: React.FC<SellProps> = ({ categories, onAddProduct, onNavigate
         imageUrls.push(supabase.storage.from('product-images').getPublicUrl(fileName).data.publicUrl);
       }
 
-      // Envia os dados para o banco. Notar a conversão do categoryId para Number
       const { data, error: dbError } = await supabase.from('products').insert([{
         title: formData.title,
         description: `${formData.description}\n\nVendedor: ${formData.sellerName}\nWhats: ${formData.sellerWhatsapp}`,
         price: parseFloat(formData.price),
         images: imageUrls,
-        category_id: parseInt(formData.categoryId), // Convertido para Number
+        category_id: parseInt(formData.categoryId), 
         status: formData.condition,
         active: true,
         storeId: 'personal_1',
@@ -133,7 +133,7 @@ export const Sell: React.FC<SellProps> = ({ categories, onAddProduct, onNavigate
         <div className="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-gray-100">
           <div className="bg-brand-darkPurple p-10 text-white relative">
             <h1 className="text-3xl font-black mb-2">Vender um Item</h1>
-            <p className="text-brand-lightPurple opacity-90">Anuncie e venda rápido com IDs simples.</p>
+            <p className="text-brand-lightPurple opacity-90">Anuncie e venda rápido. Agora você pode adicionar até 6 fotos!</p>
           </div>
 
           {!currentUser ? (
@@ -158,17 +158,37 @@ export const Sell: React.FC<SellProps> = ({ categories, onAddProduct, onNavigate
                 </div>
               </section>
 
-              <section className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                {[0, 1, 2].map((idx) => (
+              {/* Grid de imagens atualizada para suportar 6 itens */}
+              <section className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {images.map((img, idx) => (
                   <div key={idx} className="relative aspect-square">
-                    <input type="file" ref={fileInputRefs[idx]} onChange={(e) => handleFileChange(idx, e)} accept="image/*" className="hidden" />
-                    {images[idx] ? (
-                      <div className="w-full h-full rounded-3xl overflow-hidden border relative">
-                        <img src={images[idx]!.preview} className="w-full h-full object-cover" alt="Preview" />
-                        <button type="button" onClick={() => removeImage(idx)} className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full"><Trash2 className="w-4 h-4" /></button>
+                    <input 
+                      type="file" 
+                      ref={el => fileInputRefs.current[idx] = el} 
+                      onChange={(e) => handleFileChange(idx, e)} 
+                      accept="image/*" 
+                      className="hidden" 
+                    />
+                    {img ? (
+                      <div className="w-full h-full rounded-3xl overflow-hidden border-2 border-brand-lightPurple relative shadow-sm">
+                        <img src={img.preview} className="w-full h-full object-cover" alt={`Preview ${idx + 1}`} />
+                        <button 
+                          type="button" 
+                          onClick={() => removeImage(idx)} 
+                          className="absolute top-2 right-2 p-1.5 bg-red-500/90 text-white rounded-full hover:bg-red-600 transition-colors shadow-md"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     ) : (
-                      <button type="button" onClick={() => fileInputRefs[idx].current?.click()} className="w-full h-full rounded-3xl border-2 border-dashed flex flex-col items-center justify-center text-gray-400 hover:bg-brand-lightPurple/20 transition-all"><Plus /> <span>Foto</span></button>
+                      <button 
+                        type="button" 
+                        onClick={() => fileInputRefs.current[idx]?.click()} 
+                        className="w-full h-full rounded-3xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 hover:bg-brand-lightPurple/10 hover:border-brand-purple/30 hover:text-brand-purple transition-all group"
+                      >
+                        <Plus className="group-hover:scale-110 transition-transform" /> 
+                        <span className="text-xs font-bold mt-1 uppercase tracking-tighter">Foto {idx + 1}</span>
+                      </button>
                     )}
                   </div>
                 ))}

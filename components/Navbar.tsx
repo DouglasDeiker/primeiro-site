@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Search, ShoppingBag, LogOut } from 'lucide-react';
+import { Search, ShoppingBag, LogOut, MessageCircle } from 'lucide-react';
 import { User } from '../types';
 
 interface NavbarProps {
@@ -25,6 +25,10 @@ export const Navbar: React.FC<NavbarProps> = ({
         ? 'text-brand-purple border-brand-orange' 
         : 'text-gray-600 hover:text-brand-purple border-transparent'
     }`;
+  };
+
+  const handleWhatsAppClick = () => {
+    window.open('https://wa.me/5511999812223', '_blank');
   };
 
   return (
@@ -57,6 +61,14 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* User Actions */}
           <div className="flex items-center space-x-2">
+            <button 
+              onClick={handleWhatsAppClick}
+              className="p-2.5 text-gray-400 hover:text-green-500 transition-all active:scale-90"
+              title="Falar no WhatsApp"
+            >
+              <MessageCircle className="h-5 w-5" />
+            </button>
+
             <button className="p-2.5 text-gray-400 hover:text-brand-purple transition-colors hidden md:block" onClick={onSearchClick}>
               <Search className="h-5 w-5" />
             </button>

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, MessageCircle, Tag, Info, ChevronLeft, ChevronRight, Share2, ImageOff, CheckCircle2 } from 'lucide-react';
 import { Product } from '../types';
 
@@ -12,6 +12,11 @@ interface ProductDetailsModalProps {
 export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ product, isOpen, onClose }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [copied, setCopied] = useState(false);
+
+  // Resetar o índice da imagem quando abrir um novo produto
+  useEffect(() => {
+    if (isOpen) setCurrentImageIndex(0);
+  }, [isOpen, product?.id]);
 
   if (!isOpen || !product) return null;
 
@@ -33,7 +38,6 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
       url: shareUrl,
     };
 
-    // Tenta usar a API de compartilhamento nativa (comum em celulares)
     if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
       try {
         await navigator.share(shareData);
@@ -43,7 +47,6 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
         }
       }
     } else {
-      // Fallback para cópia em área de transferência (Desktop/Browsers antigos)
       try {
         await navigator.clipboard.writeText(shareUrl);
         setCopied(true);
@@ -66,25 +69,52 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
           <X className="w-6 h-6" />
         </button>
 
-        <div className="w-full md:w-1/2 h-80 md:h-auto relative bg-gray-100 flex items-center justify-center">
-          {hasImages ? (
-            <>
-              <img src={images[currentImageIndex]} alt={product.title} className="w-full h-full object-cover" />
-              {images.length > 1 && (
-                <>
-                  <button onClick={prevImage} className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/90 p-2 rounded-full shadow-md hover:bg-white transition-colors"><ChevronLeft className="w-6 h-6" /></button>
-                  <button onClick={nextImage} className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/90 p-2 rounded-full shadow-md hover:bg-white transition-colors"><ChevronRight className="w-6 h-6" /></button>
-                </>
-              )}
-            </>
-          ) : (
-            <div className="flex flex-col items-center justify-center text-gray-300">
-              <ImageOff className="w-20 h-20 mb-4 opacity-20" />
-              <span className="font-black uppercase tracking-widest opacity-40">Imagem não disponível</span>
+        {/* Área da Imagem e Galeria */}
+        <div className="w-full md:w-1/2 flex flex-col bg-gray-50 border-r border-gray-100">
+          <div className="flex-grow relative min-h-[320px] md:min-h-[450px] flex items-center justify-center overflow-hidden bg-gray-200">
+            {hasImages ? (
+              <>
+                <img 
+                  src={images[currentImageIndex]} 
+                  alt={product.title} 
+                  className="w-full h-full object-contain md:object-cover transition-all duration-500" 
+                />
+                {images.length > 1 && (
+                  <>
+                    <button onClick={prevImage} className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/90 p-2.5 rounded-full shadow-md hover:bg-brand-purple hover:text-white transition-all"><ChevronLeft className="w-6 h-6" /></button>
+                    <button onClick={nextImage} className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/90 p-2.5 rounded-full shadow-md hover:bg-brand-purple hover:text-white transition-all"><ChevronRight className="w-6 h-6" /></button>
+                  </>
+                )}
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center text-gray-300">
+                <ImageOff className="w-20 h-20 mb-4 opacity-20" />
+                <span className="font-black uppercase tracking-widest opacity-40">Sem imagem</span>
+              </div>
+            )}
+          </div>
+
+          {/* Galeria de Miniaturas (Thumbnails) */}
+          {images.length > 1 && (
+            <div className="p-4 bg-white border-t border-gray-100 flex gap-3 overflow-x-auto scrollbar-hide">
+              {images.map((img, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setCurrentImageIndex(idx)}
+                  className={`flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-all ${
+                    idx === currentImageIndex 
+                      ? 'border-brand-purple scale-105 shadow-md' 
+                      : 'border-transparent opacity-60 hover:opacity-100'
+                  }`}
+                >
+                  <img src={img} className="w-full h-full object-cover" alt={`Miniatura ${idx + 1}`} />
+                </button>
+              ))}
             </div>
           )}
         </div>
 
+        {/* Conteúdo Detalhado */}
         <div className="w-full md:w-1/2 p-8 md:p-12 overflow-y-auto flex flex-col">
           <div className="mb-6">
             <div className="flex items-center gap-2 mb-4">
@@ -96,10 +126,13 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
             </div>
             
             <h2 className="text-3xl font-extrabold text-gray-900 mb-4">{product.title}</h2>
-            <span className="text-4xl font-black text-brand-purple">R$ {product.price.toFixed(2)}</span>
+            <div className="flex items-baseline gap-2 mb-8">
+              <span className="text-4xl font-black text-brand-purple">R$ {product.price.toFixed(2)}</span>
+              <span className="text-gray-400 text-sm font-bold uppercase">À Vista</span>
+            </div>
 
             <div className="mt-8 pt-6 border-t border-gray-100">
-              <h4 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center"><Info className="w-4 h-4 mr-2" /> Descrição</h4>
+              <h4 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center"><Info className="w-4 h-4 mr-2" /> Descrição do Produto</h4>
               <p className="text-gray-600 text-lg leading-relaxed whitespace-pre-line">{product.description}</p>
             </div>
           </div>
