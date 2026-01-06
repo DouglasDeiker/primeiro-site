@@ -14,7 +14,7 @@ import { Register } from './pages/Register';
 import { Footer } from './components/Footer';
 import { ProductDetailsModal } from './components/ProductDetailsModal';
 import { Loader2, Database, RefreshCcw, MessageCircle } from 'lucide-react';
-import { Product, User } from './types';
+import { Product, User, Category } from './types';
 import { CATEGORIES } from './constants';
 import { supabase, isDatabaseConfigured } from './lib/supabase';
 
@@ -32,7 +32,8 @@ const App: React.FC = () => {
   const [searchIntentTrigger, setSearchIntentTrigger] = useState<number>(0);
   
   const [products, setProducts] = useState<Product[]>([]);
-  const [dbCategories, setDbCategories] = useState<string[]>(CATEGORIES);
+  const [fullCategories, setFullCategories] = useState<Category[]>([]);
+  const [dbCategoriesNames, setDbCategoriesNames] = useState<string[]>(CATEGORIES);
   const [heroImages, setHeroImages] = useState<string[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
 
@@ -57,9 +58,10 @@ const App: React.FC = () => {
     const fetchData = async () => {
       if (!isDatabaseConfigured) return;
       try {
+        // Busca produtos incluindo o nome da categoria relacionada
         const { data: productsData, error: pError } = await supabase
           .from('products')
-          .select('*')
+          .select('*, app_categories(name)')
           .eq('active', true)
           .order('id', { ascending: false });
 
@@ -68,19 +70,26 @@ const App: React.FC = () => {
           return;
         }
 
-        setProducts(productsData || []);
+        // Mapeia para garantir que 'category' seja o nome em string
+        const mappedProducts: Product[] = (productsData || []).map(p => ({
+          ...p,
+          category: p.app_categories?.name || 'Variados'
+        }));
+
+        setProducts(mappedProducts);
 
         const [cats, slides] = await Promise.all([
-          supabase.from('app_categories').select('name').order('name'),
+          supabase.from('app_categories').select('id, name').order('name'),
           supabase.from('hero_slides').select('image_url').eq('active', true).order('display_order')
         ]);
 
         if (cats.data && cats.data.length > 0) {
-          setDbCategories(cats.data.map(c => c.name));
+          setFullCategories(cats.data);
+          setDbCategoriesNames(cats.data.map(c => c.name));
         }
         
         const manualSlides = slides.data?.map(s => s.image_url) || [];
-        const productPreviews = (productsData || []).map(p => p.images?.[0]).filter(Boolean) as string[];
+        const productPreviews = mappedProducts.map(p => p.images?.[0]).filter(Boolean) as string[];
         setHeroImages(manualSlides.length > 0 ? manualSlides : productPreviews.slice(0, 5));
 
       } catch (err) {
@@ -116,19 +125,13 @@ const App: React.FC = () => {
     handleNavigate('home');
   };
 
-  const openWhatsApp = () => {
-    const message = "Olá! Gostaria de falar com o suporte do Barganha Mogi.";
-    const phoneNumber = "5511999812223";
-    window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`, '_blank');
-  };
-
   const renderPage = () => {
     switch (currentPage) {
       case 'home': return <Home onNavigate={handleNavigate} heroImages={heroImages} />;
-      case 'categories': return <Categories onSelectCategory={(cat) => { handleNavigate('offers'); }} categories={dbCategories} />;
-      case 'offers': return <Offers products={products} categories={dbCategories} initialCategory="Todos" favorites={favorites} onToggleFavorite={handleToggleFavorite} onViewDetails={(p) => { setDetailProduct(p); setIsDetailModalOpen(true); }} searchFocusTrigger={searchIntentTrigger} />;
+      case 'categories': return <Categories onSelectCategory={(cat) => { handleNavigate('offers'); }} categories={dbCategoriesNames} />;
+      case 'offers': return <Offers products={products} categories={dbCategoriesNames} initialCategory="Todos" favorites={favorites} onToggleFavorite={handleToggleFavorite} onViewDetails={(p) => { setDetailProduct(p); setIsDetailModalOpen(true); }} searchFocusTrigger={searchIntentTrigger} />;
       case 'favorites': return <Favorites products={products} favorites={favorites} onToggleFavorite={handleToggleFavorite} onNavigate={handleNavigate} onViewDetails={(p) => { setDetailProduct(p); setIsDetailModalOpen(true); }} />;
-      case 'sell': return <Sell onAddProduct={(p) => { setProducts([p, ...products]); handleNavigate('offers'); }} onNavigate={handleNavigate} />;
+      case 'sell': return <Sell categories={fullCategories} onAddProduct={(p) => { setProducts([p, ...products]); handleNavigate('offers'); }} onNavigate={handleNavigate} />;
       case 'login': return <Login onNavigate={handleNavigate} onLoginSuccess={() => handleNavigate('home')} />;
       case 'register': return <Register onNavigate={handleNavigate} onRegisterSuccess={() => handleNavigate('home')} />;
       case 'help': return <HelpCenter onNavigate={handleNavigate} />;
@@ -150,8 +153,8 @@ const App: React.FC = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
         <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl max-w-2xl w-full text-center">
           <Database className="w-16 h-16 text-red-500 mx-auto mb-6" />
-          <h2 className="text-2xl font-black mb-4">Erro de Tabelas</h2>
-          <p className="text-gray-500 mb-8">Parece que o banco não está pronto. Aplique o script SQL no Supabase.</p>
+          <h2 className="text-2xl font-black mb-4">Erro de Banco</h2>
+          <p className="text-gray-500 mb-8">{dbError}</p>
           <button onClick={() => window.location.reload()} className="bg-brand-purple text-white px-8 py-4 rounded-xl font-bold flex items-center gap-2 mx-auto">
             <RefreshCcw className="w-5 h-5" /> Tentar Novamente
           </button>
@@ -162,33 +165,9 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 font-sans pb-20 md:pb-0 relative">
-      <Navbar 
-        currentPage={currentPage} 
-        onNavigate={handleNavigate} 
-        onSearchClick={() => { handleNavigate('offers'); setSearchIntentTrigger(t => t + 1); }} 
-        user={user}
-        onLogout={handleLogout}
-      />
-      
-      <main className="flex-grow">
-        {renderPage()}
-      </main>
-
+      <Navbar currentPage={currentPage} onNavigate={handleNavigate} onSearchClick={() => { handleNavigate('offers'); setSearchIntentTrigger(t => t + 1); }} user={user} onLogout={handleLogout} />
+      <main className="flex-grow">{renderPage()}</main>
       <Footer onNavigate={handleNavigate} />
-
-      {/* Floating WhatsApp Button */}
-      <button 
-        onClick={openWhatsApp}
-        className="fixed bottom-24 md:bottom-8 right-6 z-[60] bg-[#25D366] text-white p-4 rounded-full shadow-2xl shadow-green-500/40 hover:scale-110 active:scale-95 transition-all animate-bounce duration-[3000ms]"
-        title="Falar no WhatsApp"
-      >
-        <MessageCircle className="w-8 h-8 fill-current" />
-        <span className="absolute -top-1 -right-1 flex h-4 w-4">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-4 w-4 bg-green-500"></span>
-        </span>
-      </button>
-
       <ProductDetailsModal isOpen={isDetailModalOpen} product={detailProduct} onClose={() => setIsDetailModalOpen(false)} />
       <MobileNav currentPage={currentPage} onNavigate={handleNavigate} onSearchClick={() => { handleNavigate('offers'); setSearchIntentTrigger(t => t + 1); }} />
     </div>

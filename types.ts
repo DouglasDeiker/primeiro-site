@@ -14,6 +14,11 @@ export interface User {
   photoUrl?: string; 
 }
 
+export interface Category {
+  id: string;
+  name: string;
+}
+
 export interface Store {
   id: string;
   name: string;
@@ -37,8 +42,9 @@ export interface Product {
   description: string;
   price: number;
   images: string[];
-  category: string;
-  status: ItemStatus; // Mudado de 'condition' para 'status'
+  category: string; // Nome para exibição
+  categoryId?: string; // ID (UUID) para o banco
+  status: ItemStatus;
   createdAt: string;
   active: boolean; 
 }

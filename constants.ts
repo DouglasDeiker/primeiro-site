@@ -1,7 +1,7 @@
 
 import { Product, Store } from './types';
 
-// LISTA DE CATEGORIAS
+// LISTA DE CATEGORIAS (Fallback e Exibição)
 export const CATEGORIES = [
   'Móveis', 
   'Eletrônicos', 
