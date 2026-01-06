@@ -21,7 +21,7 @@ import { supabase, isDatabaseConfigured } from './lib/supabase';
 const formatSupabaseError = (err: any): string => {
   if (!err) return "Erro desconhecido.";
   if (typeof err === 'string') return err;
-  return `Erro ${err.code || ''}: ${err.message || ''} ${err.details || ''}`.trim() || JSON.stringify(err);
+  return `Erro ${err.code || ''}: ${err.message || ''}`.trim();
 };
 
 const App: React.FC = () => {
@@ -43,7 +43,8 @@ const App: React.FC = () => {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    // Monitor de autenticação
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUser({
           id: session.user.id,
@@ -64,6 +65,7 @@ const App: React.FC = () => {
       }
       
       try {
+        // 1. Buscar Produtos
         const { data: productsData, error: pError } = await supabase
           .from('products')
           .select('*, app_categories(name)')
@@ -71,24 +73,21 @@ const App: React.FC = () => {
           .order('id', { ascending: false });
 
         if (pError) {
-          console.error("Erro Supabase:", pError);
-          setDbError({ 
-            message: pError.code === '42P01' 
-              ? "Tabela 'products' não encontrada. Você precisa rodar o script SQL no Supabase." 
-              : formatSupabaseError(pError),
-            code: pError.code 
-          });
-          setIsInitializing(false);
-          return;
+          console.error("Erro ao buscar produtos:", pError);
+          // Só trava o app se for erro de tabela inexistente (42P01)
+          if (pError.code === '42P01') {
+             setDbError({ message: "Tabela 'products' não encontrada.", code: pError.code });
+             setIsInitializing(false);
+             return;
+          }
         }
 
-        // Sanitização profunda dos dados para evitar erros de tipo no frontend
+        // Sanitização segura de dados
         const mappedProducts: Product[] = (productsData || []).map(p => {
-          // Garante que images seja um array de strings
           let safeImages: string[] = [];
           if (Array.isArray(p.images)) {
             safeImages = p.images.filter(img => typeof img === 'string');
-          } else if (typeof p.images === 'string' && p.images.startsWith('http')) {
+          } else if (typeof p.images === 'string') {
             safeImages = [p.images];
           }
 
@@ -105,28 +104,29 @@ const App: React.FC = () => {
 
         setProducts(mappedProducts);
 
-        const [cats, slides] = await Promise.all([
+        // 2. Buscar Categorias e Hero Slides
+        const [catsRes, slidesRes] = await Promise.all([
           supabase.from('app_categories').select('id, name').order('name', { ascending: true }),
           supabase.from('hero_slides').select('image_url').eq('active', true).order('display_order')
         ]);
 
-        if (cats.data) {
-          setFullCategories(cats.data);
-          setDbCategoriesNames(cats.data.map(c => c.name));
+        if (catsRes.data) {
+          setFullCategories(catsRes.data);
+          setDbCategoriesNames(catsRes.data.map(c => c.name));
         }
         
-        const manualSlides = (slides.data || [])
+        const manualSlides = (slidesRes.data || [])
           .map(s => s.image_url)
-          .filter(url => typeof url === 'string' && url.trim() !== '');
+          .filter(url => typeof url === 'string' && url.length > 5);
 
         const productPreviews = mappedProducts
           .map(p => p.images?.[0])
-          .filter((img): img is string => typeof img === 'string' && img.trim() !== '');
+          .filter((img): img is string => typeof img === 'string' && img.length > 5);
 
         setHeroImages(manualSlides.length > 0 ? manualSlides : productPreviews.slice(0, 5));
 
       } catch (err: any) {
-        setDbError({ message: err.message || "Erro inesperado ao conectar ao banco." });
+        console.error("Erro inesperado no carregamento:", err);
       } finally {
         setIsInitializing(false);
       }
@@ -134,17 +134,15 @@ const App: React.FC = () => {
 
     fetchData();
 
-    const savedFavs = localStorage.getItem('barganha_favorites');
-    if (savedFavs) {
-      try { 
+    // Favoritos do LocalStorage
+    try {
+      const savedFavs = localStorage.getItem('barganha_favorites');
+      if (savedFavs) {
         const parsed = JSON.parse(savedFavs);
-        const validNumericFavs = Array.isArray(parsed) 
-          ? parsed.filter(id => typeof id === 'number') 
-          : [];
-        setFavorites(validNumericFavs);
-      } catch { 
-        setFavorites([]); 
+        if (Array.isArray(parsed)) setFavorites(parsed.filter(id => typeof id === 'number'));
       }
+    } catch (e) {
+      console.warn("Erro ao ler favoritos do cache", e);
     }
 
     return () => subscription.unsubscribe();
@@ -172,24 +170,8 @@ const App: React.FC = () => {
   const renderPage = () => {
     switch (currentPage) {
       case 'home': return <Home onNavigate={handleNavigate} heroImages={heroImages} />;
-      case 'categories': 
-        return <Categories 
-          categories={dbCategoriesNames}
-          onSelectCategory={(cat) => { 
-            setFilterCategory(cat); 
-            handleNavigate('offers'); 
-          }} 
-        />;
-      case 'offers': 
-        return <Offers 
-          products={products} 
-          categories={dbCategoriesNames} 
-          initialCategory={filterCategory} 
-          favorites={favorites} 
-          onToggleFavorite={handleToggleFavorite} 
-          onViewDetails={(p) => { setDetailProduct(p); setIsDetailModalOpen(true); }} 
-          searchFocusTrigger={searchIntentTrigger} 
-        />;
+      case 'categories': return <Categories categories={dbCategoriesNames} onSelectCategory={(cat) => { setFilterCategory(cat); handleNavigate('offers'); }} />;
+      case 'offers': return <Offers products={products} categories={dbCategoriesNames} initialCategory={filterCategory} favorites={favorites} onToggleFavorite={handleToggleFavorite} onViewDetails={(p) => { setDetailProduct(p); setIsDetailModalOpen(true); }} searchFocusTrigger={searchIntentTrigger} />;
       case 'favorites': return <Favorites products={products} favorites={favorites} onToggleFavorite={handleToggleFavorite} onNavigate={handleNavigate} onViewDetails={(p) => { setDetailProduct(p); setIsDetailModalOpen(true); }} />;
       case 'sell': return <Sell categories={fullCategories} onAddProduct={(p) => { setProducts([p, ...products]); handleNavigate('offers'); }} onNavigate={handleNavigate} />;
       case 'login': return <Login onNavigate={handleNavigate} onLoginSuccess={() => handleNavigate('home')} />;
@@ -213,16 +195,10 @@ const App: React.FC = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6 text-center">
         <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl max-w-2xl w-full">
           <Database className="w-16 h-16 text-red-500 mx-auto mb-6" />
-          <h2 className="text-2xl font-black mb-4">Atenção Necessária</h2>
+          <h2 className="text-2xl font-black mb-4">Ajuste Necessário</h2>
           <div className="bg-red-50 p-6 rounded-2xl mb-8 border border-red-100 text-left">
-            <div className="flex items-center gap-2 text-red-700 font-bold mb-2">
-              <AlertCircle className="w-5 h-5" /> Código do Erro: {dbError.code || 'Desconhecido'}
-            </div>
-            <p className="text-gray-700 text-sm">{dbError.message}</p>
+            <p className="text-gray-700 text-sm">O site não conseguiu localizar as tabelas no seu Supabase. Certifique-se de ter rodado o script SQL corretamente.</p>
           </div>
-          <p className="text-gray-500 mb-8 text-sm">
-            Se você acabou de rodar o SQL, clique em "Tentar Novamente". Se o erro persistir, verifique se o script SQL foi executado com sucesso no painel do Supabase.
-          </p>
           <button onClick={() => window.location.reload()} className="bg-brand-purple text-white px-8 py-4 rounded-xl font-bold flex items-center gap-2 mx-auto transition-transform active:scale-95">
             <RefreshCcw className="w-5 h-5" /> Tentar Novamente
           </button>
@@ -233,29 +209,11 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 font-sans pb-20 md:pb-0 relative">
-      <Navbar 
-        currentPage={currentPage} 
-        onNavigate={handleNavigate} 
-        onSearchClick={() => { 
-          setFilterCategory('Todos'); 
-          handleNavigate('offers'); 
-          setSearchIntentTrigger(t => t + 1); 
-        }} 
-        user={user} 
-        onLogout={handleLogout} 
-      />
+      <Navbar currentPage={currentPage} onNavigate={handleNavigate} onSearchClick={() => { setFilterCategory('Todos'); handleNavigate('offers'); setSearchIntentTrigger(t => t + 1); }} user={user} onLogout={handleLogout} />
       <main className="flex-grow">{renderPage()}</main>
       <Footer onNavigate={handleNavigate} />
       <ProductDetailsModal isOpen={isDetailModalOpen} product={detailProduct} onClose={() => setIsDetailModalOpen(false)} />
-      <MobileNav 
-        currentPage={currentPage} 
-        onNavigate={handleNavigate} 
-        onSearchClick={() => { 
-          setFilterCategory('Todos');
-          handleNavigate('offers'); 
-          setSearchIntentTrigger(t => t + 1); 
-        }} 
-      />
+      <MobileNav currentPage={currentPage} onNavigate={handleNavigate} onSearchClick={() => { setFilterCategory('Todos'); handleNavigate('offers'); setSearchIntentTrigger(t => t + 1); }} />
     </div>
   );
 };
