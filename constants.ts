@@ -5,13 +5,17 @@ import { Product, Store } from './types';
 export const CATEGORIES = [
   'Móveis', 
   'Eletrônicos', 
+  'Eletrodomésticos',
+  'Ferramentas',
+  'Antiguidades',
   'Roupas', 
   'Esporte', 
   'Decoração', 
   'Instrumentos',
   'Automotivo',
   'Infantil',
-  'Livros'
+  'Livros',
+  'Variados'
 ];
 
 // LISTA DE LOJAS PARCEIRAS

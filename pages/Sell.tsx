@@ -114,13 +114,18 @@ export const Sell: React.FC<SellProps> = ({ onAddProduct, onNavigate }) => {
         const item = validImageObjects[i];
         const fileExt = item.file.name.split('.').pop();
         const fileName = `${currentUser.id}/${Date.now()}-${i}.${fileExt}`;
-        const filePath = `products/${fileName}`;
+        const filePath = fileName; // Simplificado para evitar subpastas aninhadas se houver problema de RLS
 
         const { error: uploadError } = await supabase.storage
           .from('product-images')
-          .upload(filePath, item.file);
+          .upload(filePath, item.file, {
+            upsert: true
+          });
 
-        if (uploadError) throw new Error("Falha no upload das fotos.");
+        if (uploadError) {
+          console.error("Erro no Storage:", uploadError);
+          throw new Error(`Falha no upload da foto ${i+1}: ${uploadError.message}. Verifique se o bucket 'product-images' existe.`);
+        }
 
         const { data: { publicUrl } } = supabase.storage
           .from('product-images')

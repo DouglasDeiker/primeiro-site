@@ -1,6 +1,10 @@
 
 import React from 'react';
-import { Armchair, Laptop, Shirt, Dumbbell, Palette, Music, Car, Baby, Book, ShoppingBag, ArrowRight, Home, Sparkles } from 'lucide-react';
+import { 
+  Armchair, Laptop, Shirt, Dumbbell, Palette, Music, 
+  Car, Baby, Book, ShoppingBag, ArrowRight, Home, 
+  Sparkles, Wrench, History, Microwave, Box 
+} from 'lucide-react';
 
 interface CategoriesProps {
   onSelectCategory: (category: string) => void;
@@ -8,18 +12,22 @@ interface CategoriesProps {
 }
 
 export const Categories: React.FC<CategoriesProps> = ({ onSelectCategory, categories }) => {
-  // Helper para ícones (tenta mapear pelo nome ou usa padrão)
+  // Helper para ícones
   const getCategoryIcon = (cat: string) => {
     const normalized = cat.toLowerCase();
-    if (normalized.includes('móvel') || normalized.includes('casa') || normalized.includes('quarto')) return <Armchair className="w-8 h-8" />;
-    if (normalized.includes('eletrônico') || normalized.includes('tech') || normalized.includes('informática')) return <Laptop className="w-8 h-8" />;
-    if (normalized.includes('roupa') || normalized.includes('moda') || normalized.includes('calçado')) return <Shirt className="w-8 h-8" />;
-    if (normalized.includes('esporte') || normalized.includes('fitness') || normalized.includes('academia')) return <Dumbbell className="w-8 h-8" />;
-    if (normalized.includes('decora') || normalized.includes('arte') || normalized.includes('quadro')) return <Palette className="w-8 h-8" />;
-    if (normalized.includes('instru') || normalized.includes('música') || normalized.includes('som')) return <Music className="w-8 h-8" />;
-    if (normalized.includes('auto') || normalized.includes('carro') || normalized.includes('moto')) return <Car className="w-8 h-8" />;
-    if (normalized.includes('infantil') || normalized.includes('bebê') || normalized.includes('brinquedo')) return <Baby className="w-8 h-8" />;
-    if (normalized.includes('livro') || normalized.includes('leitura') || normalized.includes('papelaria')) return <Book className="w-8 h-8" />;
+    if (normalized.includes('móvel') || normalized.includes('casa')) return <Armchair className="w-8 h-8" />;
+    if (normalized.includes('eletrônico') || normalized.includes('tech')) return <Laptop className="w-8 h-8" />;
+    if (normalized.includes('eletrodom')) return <Microwave className="w-8 h-8" />;
+    if (normalized.includes('ferramenta')) return <Wrench className="w-8 h-8" />;
+    if (normalized.includes('antiguidade') || normalized.includes('velho')) return <History className="w-8 h-8" />;
+    if (normalized.includes('roupa') || normalized.includes('moda')) return <Shirt className="w-8 h-8" />;
+    if (normalized.includes('esporte') || normalized.includes('fitness')) return <Dumbbell className="w-8 h-8" />;
+    if (normalized.includes('decora') || normalized.includes('arte')) return <Palette className="w-8 h-8" />;
+    if (normalized.includes('instru') || normalized.includes('música')) return <Music className="w-8 h-8" />;
+    if (normalized.includes('auto') || normalized.includes('carro')) return <Car className="w-8 h-8" />;
+    if (normalized.includes('infantil') || normalized.includes('bebê')) return <Baby className="w-8 h-8" />;
+    if (normalized.includes('livro') || normalized.includes('leitura')) return <Book className="w-8 h-8" />;
+    if (normalized.includes('variado') || normalized.includes('outros')) return <Box className="w-8 h-8" />;
     return <ShoppingBag className="w-8 h-8" />;
   };
 
