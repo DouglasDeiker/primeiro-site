@@ -13,7 +13,7 @@ import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Footer } from './components/Footer';
 import { ProductDetailsModal } from './components/ProductDetailsModal';
-import { Loader2, Database, RefreshCcw } from 'lucide-react';
+import { Loader2, Database, RefreshCcw, AlertCircle } from 'lucide-react';
 import { Product, User, Category } from './types';
 import { CATEGORIES } from './constants';
 import { supabase, isDatabaseConfigured } from './lib/supabase';
@@ -21,21 +21,21 @@ import { supabase, isDatabaseConfigured } from './lib/supabase';
 const formatSupabaseError = (err: any): string => {
   if (!err) return "Erro desconhecido.";
   if (typeof err === 'string') return err;
-  return `${err.message || ''} ${err.details || ''} ${err.hint || ''}`.trim() || JSON.stringify(err);
+  return `Erro ${err.code || ''}: ${err.message || ''} ${err.details || ''}`.trim() || JSON.stringify(err);
 };
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<string>('home');
   const [user, setUser] = useState<User | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
-  const [dbError, setDbError] = useState<string | null>(null);
+  const [dbError, setDbError] = useState<{ message: string; code?: string } | null>(null);
   const [searchIntentTrigger, setSearchIntentTrigger] = useState<number>(0);
   
   const [products, setProducts] = useState<Product[]>([]);
   const [fullCategories, setFullCategories] = useState<Category[]>([]);
   const [dbCategoriesNames, setDbCategoriesNames] = useState<string[]>(CATEGORIES);
   const [heroImages, setHeroImages] = useState<string[]>([]);
-  const [favorites, setFavorites] = useState<number[]>([]); // Mudado para number[]
+  const [favorites, setFavorites] = useState<number[]>([]);
 
   const [detailProduct, setDetailProduct] = useState<Product | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -62,7 +62,7 @@ const App: React.FC = () => {
       }
       
       try {
-        // Busca produtos com JOIN na categoria (usando a nova coluna category_id numérica)
+        // Busca produtos e tenta fazer o JOIN com categorias
         const { data: productsData, error: pError } = await supabase
           .from('products')
           .select('*, app_categories(name)')
@@ -70,12 +70,14 @@ const App: React.FC = () => {
           .order('id', { ascending: false });
 
         if (pError) {
-          console.error("Erro ao buscar produtos:", pError);
-          if (pError.code === '42P01') {
-            setDbError("As tabelas ainda não foram criadas no Supabase ou foram deletadas para migração.");
-          } else {
-            setDbError(formatSupabaseError(pError));
-          }
+          console.error("Erro Supabase:", pError);
+          setDbError({ 
+            message: pError.code === '42P01' 
+              ? "Tabela 'products' não encontrada. Você precisa rodar o script SQL no Supabase." 
+              : formatSupabaseError(pError),
+            code: pError.code 
+          });
+          setIsInitializing(false);
           return;
         }
 
@@ -86,12 +88,13 @@ const App: React.FC = () => {
 
         setProducts(mappedProducts);
 
+        // Busca categorias e slides
         const [cats, slides] = await Promise.all([
           supabase.from('app_categories').select('id, name').order('name', { ascending: true }),
           supabase.from('hero_slides').select('image_url').eq('active', true).order('display_order')
         ]);
 
-        if (cats.data && cats.data.length > 0) {
+        if (cats.data) {
           setFullCategories(cats.data);
           setDbCategoriesNames(cats.data.map(c => c.name));
         }
@@ -100,8 +103,8 @@ const App: React.FC = () => {
         const productPreviews = mappedProducts.map(p => p.images?.[0]).filter(Boolean) as string[];
         setHeroImages(manualSlides.length > 0 ? manualSlides : productPreviews.slice(0, 5));
 
-      } catch (err) {
-        console.error("Erro crítico de inicialização:", err);
+      } catch (err: any) {
+        setDbError({ message: err.message || "Erro inesperado ao conectar ao banco." });
       } finally {
         setIsInitializing(false);
       }
@@ -110,12 +113,14 @@ const App: React.FC = () => {
     fetchData();
 
     const savedFavs = localStorage.getItem('barganha_favorites');
-    if (savedFavs) setFavorites(JSON.parse(savedFavs));
+    if (savedFavs) {
+      try { setFavorites(JSON.parse(savedFavs)); } catch { setFavorites([]); }
+    }
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const handleToggleFavorite = (productId: number) => { // Mudado para number
+  const handleToggleFavorite = (productId: number) => {
     setFavorites(prev => {
       const updated = prev.includes(productId) ? prev.filter(id => id !== productId) : [...prev, productId];
       localStorage.setItem('barganha_favorites', JSON.stringify(updated));
@@ -161,15 +166,17 @@ const App: React.FC = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6 text-center">
         <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl max-w-2xl w-full">
           <Database className="w-16 h-16 text-red-500 mx-auto mb-6" />
-          <h2 className="text-2xl font-black mb-4">Migração do Banco Necessária</h2>
-          <p className="text-gray-500 mb-8 leading-relaxed">
-            As tabelas foram atualizadas para usar IDs numéricos. Por favor, execute o novo script SQL no editor do Supabase.
-            <br /><br />
-            <span className="text-sm font-bold bg-gray-100 p-2 rounded block">
-              Isso apagará os produtos antigos para garantir a integridade dos novos números.
-            </span>
+          <h2 className="text-2xl font-black mb-4">Atenção Necessária</h2>
+          <div className="bg-red-50 p-6 rounded-2xl mb-8 border border-red-100 text-left">
+            <div className="flex items-center gap-2 text-red-700 font-bold mb-2">
+              <AlertCircle className="w-5 h-5" /> Código do Erro: {dbError.code || 'Desconhecido'}
+            </div>
+            <p className="text-gray-700 text-sm">{dbError.message}</p>
+          </div>
+          <p className="text-gray-500 mb-8 text-sm">
+            Se você acabou de rodar o SQL, clique em "Tentar Novamente". Se o erro persistir, verifique se o script SQL foi executado com sucesso no painel do Supabase.
           </p>
-          <button onClick={() => window.location.reload()} className="bg-brand-purple text-white px-8 py-4 rounded-xl font-bold flex items-center gap-2 mx-auto">
+          <button onClick={() => window.location.reload()} className="bg-brand-purple text-white px-8 py-4 rounded-xl font-bold flex items-center gap-2 mx-auto transition-transform active:scale-95">
             <RefreshCcw className="w-5 h-5" /> Tentar Novamente
           </button>
         </div>
