@@ -62,7 +62,6 @@ const App: React.FC = () => {
       }
       
       try {
-        // Busca produtos e tenta fazer o JOIN com categorias
         const { data: productsData, error: pError } = await supabase
           .from('products')
           .select('*, app_categories(name)')
@@ -88,7 +87,6 @@ const App: React.FC = () => {
 
         setProducts(mappedProducts);
 
-        // Busca categorias e slides
         const [cats, slides] = await Promise.all([
           supabase.from('app_categories').select('id, name').order('name', { ascending: true }),
           supabase.from('hero_slides').select('image_url').eq('active', true).order('display_order')
@@ -112,9 +110,19 @@ const App: React.FC = () => {
 
     fetchData();
 
+    // Limpeza de favoritos antigos (converte strings UUID para números ou limpa se for incompatível)
     const savedFavs = localStorage.getItem('barganha_favorites');
     if (savedFavs) {
-      try { setFavorites(JSON.parse(savedFavs)); } catch { setFavorites([]); }
+      try { 
+        const parsed = JSON.parse(savedFavs);
+        const validNumericFavs = Array.isArray(parsed) 
+          ? parsed.filter(id => typeof id === 'number') 
+          : [];
+        setFavorites(validNumericFavs);
+        localStorage.setItem('barganha_favorites', JSON.stringify(validNumericFavs));
+      } catch { 
+        setFavorites([]); 
+      }
     }
 
     return () => subscription.unsubscribe();
