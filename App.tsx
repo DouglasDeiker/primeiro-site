@@ -36,6 +36,9 @@ const App: React.FC = () => {
   const [dbCategoriesNames, setDbCategoriesNames] = useState<string[]>(CATEGORIES);
   const [heroImages, setHeroImages] = useState<string[]>([]);
   const [favorites, setFavorites] = useState<number[]>([]);
+  
+  // NOVO: Estado para controlar qual categoria está ativa globalmente
+  const [filterCategory, setFilterCategory] = useState<string>('Todos');
 
   const [detailProduct, setDetailProduct] = useState<Product | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -110,7 +113,6 @@ const App: React.FC = () => {
 
     fetchData();
 
-    // Limpeza de favoritos antigos (converte strings UUID para números ou limpa se for incompatível)
     const savedFavs = localStorage.getItem('barganha_favorites');
     if (savedFavs) {
       try { 
@@ -137,6 +139,8 @@ const App: React.FC = () => {
   };
 
   const handleNavigate = (page: string) => {
+    // Resetar filtro se voltar para home
+    if (page === 'home') setFilterCategory('Todos');
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -149,8 +153,24 @@ const App: React.FC = () => {
   const renderPage = () => {
     switch (currentPage) {
       case 'home': return <Home onNavigate={handleNavigate} heroImages={heroImages} />;
-      case 'categories': return <Categories onSelectCategory={(cat) => { handleNavigate('offers'); }} categories={dbCategoriesNames} />;
-      case 'offers': return <Offers products={products} categories={dbCategoriesNames} initialCategory="Todos" favorites={favorites} onToggleFavorite={handleToggleFavorite} onViewDetails={(p) => { setDetailProduct(p); setIsDetailModalOpen(true); }} searchFocusTrigger={searchIntentTrigger} />;
+      case 'categories': 
+        return <Categories 
+          categories={dbCategoriesNames}
+          onSelectCategory={(cat) => { 
+            setFilterCategory(cat); // Salva a categoria escolhida
+            handleNavigate('offers'); // Navega para as ofertas
+          }} 
+        />;
+      case 'offers': 
+        return <Offers 
+          products={products} 
+          categories={dbCategoriesNames} 
+          initialCategory={filterCategory} // Passa a categoria selecionada
+          favorites={favorites} 
+          onToggleFavorite={handleToggleFavorite} 
+          onViewDetails={(p) => { setDetailProduct(p); setIsDetailModalOpen(true); }} 
+          searchFocusTrigger={searchIntentTrigger} 
+        />;
       case 'favorites': return <Favorites products={products} favorites={favorites} onToggleFavorite={handleToggleFavorite} onNavigate={handleNavigate} onViewDetails={(p) => { setDetailProduct(p); setIsDetailModalOpen(true); }} />;
       case 'sell': return <Sell categories={fullCategories} onAddProduct={(p) => { setProducts([p, ...products]); handleNavigate('offers'); }} onNavigate={handleNavigate} />;
       case 'login': return <Login onNavigate={handleNavigate} onLoginSuccess={() => handleNavigate('home')} />;
@@ -194,11 +214,29 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 font-sans pb-20 md:pb-0 relative">
-      <Navbar currentPage={currentPage} onNavigate={handleNavigate} onSearchClick={() => { handleNavigate('offers'); setSearchIntentTrigger(t => t + 1); }} user={user} onLogout={handleLogout} />
+      <Navbar 
+        currentPage={currentPage} 
+        onNavigate={handleNavigate} 
+        onSearchClick={() => { 
+          setFilterCategory('Todos'); // Reseta filtro ao buscar
+          handleNavigate('offers'); 
+          setSearchIntentTrigger(t => t + 1); 
+        }} 
+        user={user} 
+        onLogout={handleLogout} 
+      />
       <main className="flex-grow">{renderPage()}</main>
       <Footer onNavigate={handleNavigate} />
       <ProductDetailsModal isOpen={isDetailModalOpen} product={detailProduct} onClose={() => setIsDetailModalOpen(false)} />
-      <MobileNav currentPage={currentPage} onNavigate={handleNavigate} onSearchClick={() => { handleNavigate('offers'); setSearchIntentTrigger(t => t + 1); }} />
+      <MobileNav 
+        currentPage={currentPage} 
+        onNavigate={handleNavigate} 
+        onSearchClick={() => { 
+          setFilterCategory('Todos');
+          handleNavigate('offers'); 
+          setSearchIntentTrigger(t => t + 1); 
+        }} 
+      />
     </div>
   );
 };
