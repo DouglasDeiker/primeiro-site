@@ -114,22 +114,22 @@ export const Sell: React.FC<SellProps> = ({ onAddProduct, onNavigate }) => {
         const item = validImageObjects[i];
         const fileExt = item.file.name.split('.').pop();
         const fileName = `${currentUser.id}/${Date.now()}-${i}.${fileExt}`;
-        const filePath = fileName; // Simplificado para evitar subpastas aninhadas se houver problema de RLS
 
+        // Tenta fazer o upload
         const { error: uploadError } = await supabase.storage
           .from('product-images')
-          .upload(filePath, item.file, {
+          .upload(fileName, item.file, {
             upsert: true
           });
 
         if (uploadError) {
-          console.error("Erro no Storage:", uploadError);
-          throw new Error(`Falha no upload da foto ${i+1}: ${uploadError.message}. Verifique se o bucket 'product-images' existe.`);
+          console.error("Erro detalhado do Supabase Storage:", uploadError);
+          throw new Error(`Erro na foto ${i+1}: ${uploadError.message}. Certifique-se que o Bucket 'product-images' é PÚBLICO e tem políticas de INSERT.`);
         }
 
         const { data: { publicUrl } } = supabase.storage
           .from('product-images')
-          .getPublicUrl(filePath);
+          .getPublicUrl(fileName);
 
         imageUrls.push(publicUrl);
         setUploadProgress(10 + ((i + 1) / validImageObjects.length) * 40);
@@ -194,7 +194,7 @@ export const Sell: React.FC<SellProps> = ({ onAddProduct, onNavigate }) => {
             <div className="p-12 text-center space-y-6">
                <AlertTriangle className="w-16 h-16 text-brand-orange mx-auto" />
                <h2 className="text-2xl font-black text-gray-900">Acesso Restrito</h2>
-               <p className="text-gray-500">Você precisa estar logado para publicar anúncios e garantir a segurança da nossa comunidade.</p>
+               <p className="text-gray-500">Você precisa estar logado para publicar anúncios.</p>
                <div className="flex flex-col sm:flex-row gap-4 justify-center">
                  <button onClick={() => onNavigate('login')} className="px-8 py-4 bg-brand-purple text-white font-bold rounded-2xl">Fazer Login</button>
                </div>
@@ -287,11 +287,9 @@ export const Sell: React.FC<SellProps> = ({ onAddProduct, onNavigate }) => {
                 </div>
               </section>
 
-              <div className="space-y-4">
-                <button type="submit" disabled={isSubmitting} className={`w-full py-6 rounded-3xl font-black text-white shadow-2xl uppercase tracking-widest transition-all flex items-center justify-center gap-3 ${isSubmitting ? 'bg-brand-purple/50 cursor-not-allowed' : 'bg-brand-orange hover:bg-brand-darkOrange'}`}>
-                  {isSubmitting ? <><Loader2 className="w-6 h-6 animate-spin" /> Enviando...</> : "Publicar Anúncio"}
-                </button>
-              </div>
+              <button type="submit" disabled={isSubmitting} className={`w-full py-6 rounded-3xl font-black text-white shadow-2xl uppercase tracking-widest transition-all flex items-center justify-center gap-3 ${isSubmitting ? 'bg-brand-purple/50 cursor-not-allowed' : 'bg-brand-orange hover:bg-brand-darkOrange'}`}>
+                {isSubmitting ? <><Loader2 className="w-6 h-6 animate-spin" /> Enviando...</> : "Publicar Anúncio"}
+              </button>
             </form>
           )}
         </div>

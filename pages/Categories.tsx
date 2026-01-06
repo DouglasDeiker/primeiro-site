@@ -12,14 +12,13 @@ interface CategoriesProps {
 }
 
 export const Categories: React.FC<CategoriesProps> = ({ onSelectCategory, categories }) => {
-  // Helper para ícones
   const getCategoryIcon = (cat: string) => {
     const normalized = cat.toLowerCase();
     if (normalized.includes('móvel') || normalized.includes('casa')) return <Armchair className="w-8 h-8" />;
     if (normalized.includes('eletrônico') || normalized.includes('tech')) return <Laptop className="w-8 h-8" />;
     if (normalized.includes('eletrodom')) return <Microwave className="w-8 h-8" />;
     if (normalized.includes('ferramenta')) return <Wrench className="w-8 h-8" />;
-    if (normalized.includes('antiguidade') || normalized.includes('velho')) return <History className="w-8 h-8" />;
+    if (normalized.includes('antiguidade')) return <History className="w-8 h-8" />;
     if (normalized.includes('roupa') || normalized.includes('moda')) return <Shirt className="w-8 h-8" />;
     if (normalized.includes('esporte') || normalized.includes('fitness')) return <Dumbbell className="w-8 h-8" />;
     if (normalized.includes('decora') || normalized.includes('arte')) return <Palette className="w-8 h-8" />;
@@ -43,7 +42,6 @@ export const Categories: React.FC<CategoriesProps> = ({ onSelectCategory, catego
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 lg:gap-8">
-           {/* Card Especial: Todos */}
            <button 
               onClick={() => onSelectCategory('Todos')}
               className="group relative bg-brand-purple p-8 rounded-[2rem] shadow-xl shadow-brand-purple/20 hover:shadow-2xl hover:shadow-brand-purple/30 transition-all duration-500 overflow-hidden text-left flex flex-col justify-between h-56 transform hover:-translate-y-2"
@@ -61,7 +59,6 @@ export const Categories: React.FC<CategoriesProps> = ({ onSelectCategory, catego
              </div>
            </button>
 
-           {/* Cards Dinâmicos */}
            {categories.map((cat) => (
              <button 
                 key={cat}

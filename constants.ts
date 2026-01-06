@@ -29,8 +29,4 @@ export const STORES: Store[] = [
   }
 ];
 
-/**
- * PRODUTOS INICIAIS
- * Removidos para carregar exclusivamente do Supabase.
- */
 export const PRODUCTS: Product[] = [];
