@@ -12,10 +12,14 @@ interface ProductDetailsModalProps {
 export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ product, isOpen, onClose }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   // Resetar o índice da imagem quando abrir um novo produto
   useEffect(() => {
-    if (isOpen) setCurrentImageIndex(0);
+    if (isOpen) {
+      setCurrentImageIndex(0);
+      setIsLoaded(false);
+    }
   }, [isOpen, product?.id]);
 
   if (!isOpen || !product) return null;
@@ -60,8 +64,15 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
     }
   };
 
-  const nextImage = () => setCurrentImageIndex((prev) => (prev + 1) % images.length);
-  const prevImage = () => setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+  const nextImage = () => {
+    setIsLoaded(false);
+    setCurrentImageIndex((prev) => (prev + 1) % images.length);
+  };
+  
+  const prevImage = () => {
+    setIsLoaded(false);
+    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
@@ -77,10 +88,17 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
           <div className="flex-grow relative min-h-[320px] md:min-h-[450px] flex items-center justify-center overflow-hidden bg-gray-200">
             {hasImages ? (
               <>
+                {!isLoaded && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-12 h-12 border-4 border-brand-purple/20 border-t-brand-purple rounded-full animate-spin"></div>
+                  </div>
+                )}
                 <img 
                   src={images[currentImageIndex]} 
                   alt={product.title} 
-                  className="w-full h-full object-contain md:object-cover transition-all duration-500" 
+                  loading="lazy"
+                  onLoad={() => setIsLoaded(true)}
+                  className={`w-full h-full object-contain md:object-cover transition-all duration-500 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} 
                 />
                 {images.length > 1 && (
                   <>
@@ -103,14 +121,22 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
               {images.map((img, idx) => (
                 <button
                   key={idx}
-                  onClick={() => setCurrentImageIndex(idx)}
+                  onClick={() => {
+                    setIsLoaded(false);
+                    setCurrentImageIndex(idx);
+                  }}
                   className={`flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-all ${
                     idx === currentImageIndex 
                       ? 'border-brand-purple scale-105 shadow-md' 
                       : 'border-transparent opacity-60 hover:opacity-100'
                   }`}
                 >
-                  <img src={img} className="w-full h-full object-cover" alt={`Miniatura ${idx + 1}`} />
+                  <img 
+                    src={img} 
+                    loading="lazy"
+                    className="w-full h-full object-cover" 
+                    alt={`Miniatura ${idx + 1}`} 
+                  />
                 </button>
               ))}
             </div>

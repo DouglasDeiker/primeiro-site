@@ -19,6 +19,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   onViewDetails
 }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   // Filtragem ultra-defensiva para evitar o erro .trim() is not a function
   const images = React.useMemo(() => {
@@ -36,11 +37,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   const nextImage = (e: React.MouseEvent) => {
     e.stopPropagation();
+    setIsLoaded(false); // Reset loader for next image
     setCurrentImageIndex((prev) => (prev + 1) % images.length);
   };
 
   const prevImage = (e: React.MouseEvent) => {
     e.stopPropagation();
+    setIsLoaded(false); // Reset loader for prev image
     setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
   };
 
@@ -63,11 +66,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     >
       <div className="relative h-64 overflow-hidden bg-gray-100 flex items-center justify-center">
         {hasImages ? (
-          <img 
-            src={images[currentImageIndex]} 
-            alt={product.title} 
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-          />
+          <>
+            {!isLoaded && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+                <div className="w-8 h-8 border-4 border-brand-purple/20 border-t-brand-purple rounded-full animate-spin"></div>
+              </div>
+            )}
+            <img 
+              src={images[currentImageIndex]} 
+              alt={product.title} 
+              loading="lazy"
+              onLoad={() => setIsLoaded(true)}
+              className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+            />
+          </>
         ) : (
           <div className="flex flex-col items-center justify-center text-gray-300 p-8 text-center">
             <ImageOff className="w-12 h-12 mb-2 opacity-20" />

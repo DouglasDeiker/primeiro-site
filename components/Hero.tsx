@@ -44,7 +44,7 @@ export const Hero: React.FC<HeroProps> = ({ images = [] }) => {
       <div className="relative max-w-7xl mx-auto py-24 px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between h-full gap-12 text-center md:text-left">
         <div className="max-w-2xl z-10">
           <div className="inline-flex items-center px-3 py-1 rounded-full bg-brand-orange/10 text-brand-orange text-sm font-bold mb-6 border border-brand-orange/20">
-            <Zap className="w-4 h-4 mr-2 fill-current" />
+            < Zap className="w-4 h-4 mr-2 fill-current" />
             Ofertas Exclusivas em Mogi
           </div>
           <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-6xl mb-6 leading-tight">
@@ -72,6 +72,7 @@ export const Hero: React.FC<HeroProps> = ({ images = [] }) => {
                    key={`${img}-${index}`}
                    src={img} 
                    alt={`Slide ${index}`} 
+                   loading={index === 0 ? "eager" : "lazy"}
                    className={`absolute inset-0 w-full h-full object-cover transition-all duration-1000 ease-in-out ${
                      index === currentIndex ? 'opacity-100 scale-100' : 'opacity-0 scale-110 pointer-events-none'
                    }`}

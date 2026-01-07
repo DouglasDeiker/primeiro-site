@@ -21,7 +21,10 @@ import { supabase, isDatabaseConfigured } from './lib/supabase';
 const formatSupabaseError = (err: any): string => {
   if (!err) return "Erro desconhecido.";
   if (typeof err === 'string') return err;
-  return `Erro ${err.code || ''}: ${err.message || ''}`.trim();
+  // Extrai a mensagem de erro de forma amigável
+  const message = err.message || err.details || JSON.stringify(err);
+  const code = err.code ? `[${err.code}] ` : "";
+  return `${code}${message}`;
 };
 
 const App: React.FC = () => {
@@ -73,10 +76,10 @@ const App: React.FC = () => {
           .order('id', { ascending: false });
 
         if (pError) {
-          console.error("Erro ao buscar produtos:", pError);
+          console.error("Erro ao buscar produtos:", formatSupabaseError(pError));
           // Só trava o app se for erro de tabela inexistente (42P01)
           if (pError.code === '42P01') {
-             setDbError({ message: "Tabela 'products' não encontrada.", code: pError.code });
+             setDbError({ message: "Tabela 'products' não encontrada. Verifique se o script SQL foi executado.", code: pError.code });
              setIsInitializing(false);
              return;
           }
@@ -197,7 +200,7 @@ const App: React.FC = () => {
           <Database className="w-16 h-16 text-red-500 mx-auto mb-6" />
           <h2 className="text-2xl font-black mb-4">Ajuste Necessário</h2>
           <div className="bg-red-50 p-6 rounded-2xl mb-8 border border-red-100 text-left">
-            <p className="text-gray-700 text-sm">O site não conseguiu localizar as tabelas no seu Supabase. Certifique-se de ter rodado o script SQL corretamente.</p>
+            <p className="text-gray-700 text-sm">{dbError.message}</p>
           </div>
           <button onClick={() => window.location.reload()} className="bg-brand-purple text-white px-8 py-4 rounded-xl font-bold flex items-center gap-2 mx-auto transition-transform active:scale-95">
             <RefreshCcw className="w-5 h-5" /> Tentar Novamente
