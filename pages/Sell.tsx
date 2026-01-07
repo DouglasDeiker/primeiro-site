@@ -23,11 +23,11 @@ export const Sell: React.FC<SellProps> = ({ categories, onAddProduct, onNavigate
 
   const [images, setImages] = useState<( { preview: string; file: File } | null )[]>(Array(6).fill(null));
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   
-  // Refs para os inputs de arquivo
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
@@ -54,7 +54,10 @@ export const Sell: React.FC<SellProps> = ({ categories, onAddProduct, onNavigate
   const handleFileChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 10 * 1024 * 1024) { alert("Imagem muito pesada (máx 10MB)."); return; }
+      if (file.size > 5 * 1024 * 1024) { 
+        alert("Imagem muito pesada (máx 5MB)."); 
+        return; 
+      }
       const reader = new FileReader();
       reader.onloadend = () => {
         const newImages = [...images];
@@ -80,53 +83,78 @@ export const Sell: React.FC<SellProps> = ({ categories, onAddProduct, onNavigate
     if (!currentUser) return setError("Faça login para vender.");
 
     const validImageObjects = images.filter((img): img is { preview: string; file: File } => img !== null);
-    if (!formData.title || !formData.price || !formData.categoryId) return setError("Preencha todos os campos obrigatórios.");
-    if (validImageObjects.length === 0) return setError("Adicione pelo menos uma foto.");
+    
+    if (!formData.title || !formData.price || !formData.categoryId) {
+      return setError("Preencha todos os campos obrigatórios.");
+    }
+    if (validImageObjects.length === 0) {
+      return setError("Adicione pelo menos uma foto do seu produto.");
+    }
 
     setIsSubmitting(true);
+    setUploadProgress(0);
 
     try {
       const imageUrls: string[] = [];
+      
+      // Upload de cada imagem sequencialmente para manter ordem e controle
       for (let i = 0; i < validImageObjects.length; i++) {
+        setUploadProgress(i + 1);
         const item = validImageObjects[i];
-        const fileName = `${currentUser.id}/${Date.now()}-${i}.${item.file.name.split('.').pop()}`;
-        const { error: uploadError } = await supabase.storage.from('product-images').upload(fileName, item.file);
-        if (uploadError) throw new Error(`Erro na foto ${i+1}: ${uploadError.message}`);
-        imageUrls.push(supabase.storage.from('product-images').getPublicUrl(fileName).data.publicUrl);
+        const fileExt = item.file.name.split('.').pop();
+        const fileName = `${currentUser.id}/${Date.now()}-${i}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('product-images')
+          .upload(fileName, item.file);
+
+        if (uploadError) throw new Error(`Erro no upload da foto ${i+1}: ${uploadError.message}`);
+        
+        const { data: { publicUrl } } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(fileName);
+          
+        imageUrls.push(publicUrl);
       }
 
+      // Inserção no Banco de Dados
       const { data, error: dbError } = await supabase.from('products').insert([{
         title: formData.title,
         description: `${formData.description}\n\nVendedor: ${formData.sellerName}\nWhats: ${formData.sellerWhatsapp}`,
         price: parseFloat(formData.price),
-        images: imageUrls,
+        images: imageUrls, // Envia o array de URLs
         category_id: parseInt(formData.categoryId), 
         status: formData.condition,
         active: true,
         storeId: 'personal_1',
         userId: currentUser.id
-      }]).select();
+      }]).select('*, app_categories(name)');
 
       if (dbError) throw dbError;
 
       setSuccess(true);
       setTimeout(() => {
-        const selectedCat = categories.find(c => c.id === parseInt(formData.categoryId));
-        onAddProduct({ ...data[0], category: selectedCat?.name || 'Geral' } as Product);
+        const productData = data[0];
+        onAddProduct({
+          ...productData,
+          category: productData.app_categories?.name || 'Geral'
+        } as Product);
         onNavigate('offers');
       }, 1500);
 
     } catch (err: any) {
-      setError(err.message || "Erro ao publicar.");
+      setError(err.message || "Erro ao publicar anúncio. Verifique sua conexão.");
       setIsSubmitting(false);
     }
   };
 
   if (success) return (
     <div className="min-h-[70vh] flex flex-col items-center justify-center p-6 text-center animate-in fade-in zoom-in">
-      <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-6 text-green-600"><CheckCircle2 className="w-16 h-16" /></div>
-      <h2 className="text-3xl font-black text-gray-900 mb-2">Anúncio Publicado!</h2>
-      <p className="text-gray-500">Seu item já está disponível no catálogo.</p>
+      <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-6 text-green-600">
+        <CheckCircle2 className="w-16 h-16" />
+      </div>
+      <h2 className="text-3xl font-black text-gray-900 mb-2">Sucesso!</h2>
+      <p className="text-gray-500">Seu anúncio com {images.filter(img => img).length} fotos foi publicado.</p>
     </div>
   );
 
@@ -134,84 +162,105 @@ export const Sell: React.FC<SellProps> = ({ categories, onAddProduct, onNavigate
     <div className="bg-gray-50 min-h-screen py-12 px-4">
       <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-gray-100">
-          <div className="bg-brand-darkPurple p-10 text-white relative">
-            <h1 className="text-3xl font-black mb-2">Vender um Item</h1>
-            <p className="text-brand-lightPurple opacity-90">Anuncie e venda rápido. Agora você pode adicionar até 6 fotos!</p>
+          <div className="bg-brand-darkPurple p-10 text-white relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-brand-orange opacity-10 rounded-full -mr-32 -mt-32 blur-3xl"></div>
+            <h1 className="text-3xl font-black mb-2 relative z-10">Anunciar Produto</h1>
+            <p className="text-brand-lightPurple opacity-90 relative z-10 font-medium">Mostre todos os detalhes. Você pode enviar até 6 fotos!</p>
           </div>
 
           {!currentUser ? (
             <div className="p-12 text-center space-y-6">
-               <AlertTriangle className="w-16 h-16 text-brand-orange mx-auto" />
-               <p className="text-gray-600 font-bold">Você precisa estar logado para anunciar um produto.</p>
-               <button onClick={() => onNavigate('login')} className="px-8 py-4 bg-brand-purple text-white font-bold rounded-2xl">Fazer Login</button>
+               <div className="w-20 h-20 bg-brand-lightPurple/50 text-brand-purple rounded-3xl flex items-center justify-center mx-auto">
+                 <User className="w-10 h-10" />
+               </div>
+               <div className="max-w-xs mx-auto">
+                 <h3 className="text-xl font-black text-gray-900 mb-2">Quase lá!</h3>
+                 <p className="text-gray-500 font-medium mb-8">Você precisa estar logado para criar anúncios e gerenciar suas vendas.</p>
+               </div>
+               <button onClick={() => onNavigate('login')} className="px-10 py-4 bg-brand-purple text-white font-black rounded-2xl shadow-lg shadow-brand-purple/20 hover:scale-105 transition-all">Fazer Login Agora</button>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="p-8 md:p-12 space-y-10">
-              {error && <div className="bg-red-50 p-4 rounded-2xl text-red-700 font-bold flex gap-2 items-center"><AlertTriangle className="w-5 h-5" /> {error}</div>}
+              {error && (
+                <div className="bg-red-50 p-5 rounded-2xl text-red-700 font-bold flex gap-3 items-center border border-red-100 animate-in slide-in-from-top-2">
+                  <AlertTriangle className="w-6 h-6 shrink-0" /> 
+                  <p className="text-sm">{error}</p>
+                </div>
+              )}
               
-              <section className="bg-brand-lightPurple/20 p-6 rounded-3xl space-y-6">
-                <h3 className="text-lg font-black text-brand-purple flex items-center gap-2">
-                  <User className="w-5 h-5" /> Informações do Vendedor
+              <section className="bg-brand-lightPurple/20 p-8 rounded-[2rem] space-y-6 border border-brand-purple/5">
+                <h3 className="text-sm font-black text-brand-purple flex items-center gap-2 uppercase tracking-widest">
+                  <User className="w-4 h-4" /> Perfil do Vendedor
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="relative">
+                  <div className="relative group">
                     <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    <input disabled className="w-full pl-12 pr-5 py-4 rounded-2xl bg-white border-transparent text-gray-500 font-bold" value={formData.sellerName} />
+                    <input disabled className="w-full pl-12 pr-5 py-4 rounded-2xl bg-white border border-gray-100 text-gray-400 font-bold cursor-not-allowed" value={formData.sellerName} />
                   </div>
-                  <div className="relative">
+                  <div className="relative group">
                     <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    <input disabled className="w-full pl-12 pr-5 py-4 rounded-2xl bg-white border-transparent text-gray-500 font-bold" value={formData.sellerWhatsapp} />
+                    <input disabled className="w-full pl-12 pr-5 py-4 rounded-2xl bg-white border border-gray-100 text-gray-400 font-bold cursor-not-allowed" value={formData.sellerWhatsapp} />
                   </div>
                 </div>
               </section>
 
               <section className="space-y-6">
-                <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
-                  <Tag className="w-5 h-5 text-brand-orange" /> Detalhes do Produto
+                <h3 className="text-sm font-black text-gray-400 flex items-center gap-2 uppercase tracking-widest">
+                  <Tag className="w-4 h-4 text-brand-orange" /> O que você está vendendo?
                 </h3>
                 <div className="space-y-4">
-                  <input name="title" required placeholder="Título do anúncio (ex: iPhone 13 Pro Max 256GB)" className="w-full px-6 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:ring-2 focus:ring-brand-purple outline-none font-bold text-gray-800" value={formData.title} onChange={handleInputChange} />
+                  <input name="title" required placeholder="Título (ex: Sofá 3 lugares cinza semi-novo)" className="w-full px-6 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:ring-2 focus:ring-brand-purple focus:bg-white outline-none font-bold text-gray-800 transition-all" value={formData.title} onChange={handleInputChange} />
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="relative">
-                      <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                      <input name="price" type="number" step="0.01" required placeholder="Preço (R$)" className="w-full pl-12 pr-6 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:ring-2 focus:ring-brand-purple outline-none font-bold" value={formData.price} onChange={handleInputChange} />
+                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">R$</div>
+                      <input name="price" type="number" step="0.01" required placeholder="Preço" className="w-full pl-12 pr-6 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:ring-2 focus:ring-brand-purple focus:bg-white outline-none font-bold transition-all" value={formData.price} onChange={handleInputChange} />
                     </div>
-                    <select name="categoryId" required className="w-full px-6 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:ring-2 focus:ring-brand-purple outline-none font-bold text-gray-700" value={formData.categoryId} onChange={handleInputChange}>
-                      <option value="">Selecione a Categoria</option>
-                      {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
+                    <div className="relative">
+                      <select name="categoryId" required className="w-full px-6 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:ring-2 focus:ring-brand-purple focus:bg-white outline-none font-bold text-gray-700 appearance-none transition-all" value={formData.categoryId} onChange={handleInputChange}>
+                        <option value="">Selecione a Categoria</option>
+                        {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                      <Plus className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
+                    </div>
                   </div>
 
-                  <select name="condition" className="w-full px-6 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:ring-2 focus:ring-brand-purple outline-none font-bold text-gray-700" value={formData.condition} onChange={handleInputChange}>
+                  <select name="condition" className="w-full px-6 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:ring-2 focus:ring-brand-purple focus:bg-white outline-none font-bold text-gray-700 appearance-none transition-all" value={formData.condition} onChange={handleInputChange}>
                     {Object.values(ItemStatus).map(status => <option key={status} value={status}>{status}</option>)}
                   </select>
 
-                  <textarea name="description" rows={4} placeholder="Descreva seu item (estado de conservação, tempo de uso, etc)" className="w-full px-6 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:ring-2 focus:ring-brand-purple outline-none font-medium text-gray-700 resize-none" value={formData.description} onChange={handleInputChange}></textarea>
+                  <textarea name="description" rows={4} placeholder="Conte mais sobre o item (conservação, tempo de uso...)" className="w-full px-6 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:ring-2 focus:ring-brand-purple focus:bg-white outline-none font-medium text-gray-700 resize-none transition-all" value={formData.description} onChange={handleInputChange}></textarea>
                 </div>
               </section>
 
               <section className="space-y-6">
-                <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
-                  <Camera className="w-5 h-5 text-brand-purple" /> Fotos do Produto (Até 6)
-                </h3>
+                <div className="flex justify-between items-end">
+                  <h3 className="text-sm font-black text-gray-400 flex items-center gap-2 uppercase tracking-widest">
+                    <Camera className="w-4 h-4 text-brand-purple" /> Galeria de Fotos
+                  </h3>
+                  <span className="text-[10px] font-black text-brand-purple uppercase opacity-60">Mínimo 1 foto</span>
+                </div>
+                
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                   {images.map((img, index) => (
-                    <div key={index} className="relative aspect-square rounded-2xl overflow-hidden bg-gray-50 border-2 border-dashed border-gray-200 hover:border-brand-purple transition-colors">
+                    <div key={index} className={`relative aspect-square rounded-[1.5rem] overflow-hidden border-2 border-dashed transition-all duration-300 ${img ? 'border-brand-purple' : 'border-gray-200 bg-gray-50 hover:border-brand-purple/50'}`}>
                       {img ? (
                         <>
                           <img src={img.preview} alt="Preview" className="w-full h-full object-cover" />
-                          <button type="button" onClick={() => removeImage(index)} className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 transition-colors">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+                             <button type="button" onClick={() => removeImage(index)} className="p-2.5 bg-red-500 text-white rounded-xl shadow-xl hover:scale-110 transition-transform">
+                               <Trash2 className="w-5 h-5" />
+                             </button>
+                          </div>
                         </>
                       ) : (
-                        <button type="button" onClick={() => fileInputRefs.current[index]?.click()} className="w-full h-full flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-brand-purple">
-                          <Plus className="w-8 h-8" />
-                          <span className="text-[10px] font-bold uppercase">Adicionar</span>
+                        <button type="button" onClick={() => fileInputRefs.current[index]?.click()} className="w-full h-full flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-brand-purple group">
+                          <div className="p-3 bg-white rounded-xl shadow-sm group-hover:scale-110 transition-transform">
+                            <Plus className="w-6 h-6" />
+                          </div>
+                          <span className="text-[10px] font-black uppercase tracking-tighter">Foto {index + 1}</span>
                         </button>
                       )}
-                      {/* FIX: Callback ref returning void explicitly to satisfy React 19/TS requirements */}
                       <input 
                         type="file" 
                         ref={(el) => { fileInputRefs.current[index] = el; }} 
@@ -224,8 +273,15 @@ export const Sell: React.FC<SellProps> = ({ categories, onAddProduct, onNavigate
                 </div>
               </section>
 
-              <button type="submit" disabled={isSubmitting} className="w-full py-5 bg-brand-orange hover:bg-brand-darkOrange text-white font-black rounded-2xl shadow-xl transition-all flex items-center justify-center uppercase tracking-widest active:scale-95 disabled:opacity-50">
-                {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : "Publicar Anúncio"}
+              <button type="submit" disabled={isSubmitting} className="w-full py-6 bg-brand-orange hover:bg-brand-darkOrange text-white font-black rounded-[1.5rem] shadow-xl shadow-brand-orange/20 transition-all flex items-center justify-center uppercase tracking-widest active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed">
+                {isSubmitting ? (
+                  <div className="flex items-center gap-3">
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                    <span>Enviando foto {uploadProgress} de {images.filter(i => i).length}...</span>
+                  </div>
+                ) : (
+                  "Publicar Anúncio Agora"
+                )}
               </button>
             </form>
           )}

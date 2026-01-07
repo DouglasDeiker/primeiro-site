@@ -21,7 +21,6 @@ import { supabase, isDatabaseConfigured } from './lib/supabase';
 const formatSupabaseError = (err: any): string => {
   if (!err) return "Erro desconhecido.";
   if (typeof err === 'string') return err;
-  // Extrai a mensagem de erro de forma amigável
   const message = err.message || err.details || JSON.stringify(err);
   const code = err.code ? `[${err.code}] ` : "";
   return `${code}${message}`;
@@ -46,7 +45,6 @@ const App: React.FC = () => {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   useEffect(() => {
-    // Monitor de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUser({
@@ -68,7 +66,6 @@ const App: React.FC = () => {
       }
       
       try {
-        // 1. Buscar Produtos
         const { data: productsData, error: pError } = await supabase
           .from('products')
           .select('*, app_categories(name)')
@@ -77,21 +74,27 @@ const App: React.FC = () => {
 
         if (pError) {
           console.error("Erro ao buscar produtos:", formatSupabaseError(pError));
-          // Só trava o app se for erro de tabela inexistente (42P01)
           if (pError.code === '42P01') {
-             setDbError({ message: "Tabela 'products' não encontrada. Verifique se o script SQL foi executado.", code: pError.code });
+             setDbError({ message: "Tabela 'products' não encontrada. Verifique seu banco de dados.", code: pError.code });
              setIsInitializing(false);
              return;
           }
         }
 
-        // Sanitização segura de dados
         const mappedProducts: Product[] = (productsData || []).map(p => {
           let safeImages: string[] = [];
+          
+          // Lógica robusta para tratar coluna 'images' vindo do banco
           if (Array.isArray(p.images)) {
-            safeImages = p.images.filter(img => typeof img === 'string');
+            safeImages = p.images.filter(img => typeof img === 'string' && img.length > 5);
           } else if (typeof p.images === 'string') {
-            safeImages = [p.images];
+            // Caso venha como string única ou JSON string
+            try {
+              const parsed = JSON.parse(p.images);
+              safeImages = Array.isArray(parsed) ? parsed : [p.images];
+            } catch {
+              safeImages = p.images.length > 5 ? [p.images] : [];
+            }
           }
 
           return {
@@ -107,7 +110,6 @@ const App: React.FC = () => {
 
         setProducts(mappedProducts);
 
-        // 2. Buscar Categorias e Hero Slides
         const [catsRes, slidesRes] = await Promise.all([
           supabase.from('app_categories').select('id, name').order('name', { ascending: true }),
           supabase.from('hero_slides').select('image_url').eq('active', true).order('display_order')
@@ -124,12 +126,12 @@ const App: React.FC = () => {
 
         const productPreviews = mappedProducts
           .map(p => p.images?.[0])
-          .filter((img): img is string => typeof img === 'string' && img.length > 5);
+          .filter((img): img is string => !!img);
 
         setHeroImages(manualSlides.length > 0 ? manualSlides : productPreviews.slice(0, 5));
 
       } catch (err: any) {
-        console.error("Erro inesperado no carregamento:", err);
+        console.error("Erro inesperado:", err);
       } finally {
         setIsInitializing(false);
       }
@@ -137,7 +139,6 @@ const App: React.FC = () => {
 
     fetchData();
 
-    // Favoritos do LocalStorage
     try {
       const savedFavs = localStorage.getItem('barganha_favorites');
       if (savedFavs) {
@@ -145,7 +146,7 @@ const App: React.FC = () => {
         if (Array.isArray(parsed)) setFavorites(parsed.filter(id => typeof id === 'number'));
       }
     } catch (e) {
-      console.warn("Erro ao ler favoritos do cache", e);
+      console.warn("Erro favoritos cache", e);
     }
 
     return () => subscription.unsubscribe();
@@ -198,9 +199,9 @@ const App: React.FC = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6 text-center">
         <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl max-w-2xl w-full">
           <Database className="w-16 h-16 text-red-500 mx-auto mb-6" />
-          <h2 className="text-2xl font-black mb-4">Ajuste Necessário</h2>
-          <div className="bg-red-50 p-6 rounded-2xl mb-8 border border-red-100 text-left">
-            <p className="text-gray-700 text-sm">{dbError.message}</p>
+          <h2 className="text-2xl font-black mb-4">Erro de Configuração</h2>
+          <div className="bg-red-50 p-6 rounded-2xl mb-8 border border-red-100 text-left font-mono text-sm overflow-auto max-h-40">
+            {dbError.message}
           </div>
           <button onClick={() => window.location.reload()} className="bg-brand-purple text-white px-8 py-4 rounded-xl font-bold flex items-center gap-2 mx-auto transition-transform active:scale-95">
             <RefreshCcw className="w-5 h-5" /> Tentar Novamente
