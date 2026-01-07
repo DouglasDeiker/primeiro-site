@@ -1,15 +1,23 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, MessageCircle, Tag, Info, Share2, ImageOff, CheckCircle2, ImageIcon, ZoomIn, Maximize2 } from 'lucide-react';
+import { X, MessageCircle, Tag, Info, Share2, ImageOff, CheckCircle2, ImageIcon, Maximize2, Heart } from 'lucide-react';
 import { Product } from '../types';
 
 interface ProductDetailsModalProps {
   product: Product | null;
   isOpen: boolean;
   onClose: () => void;
+  isFavorite?: boolean;
+  onToggleFavorite?: (productId: number) => void;
 }
 
-export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ product, isOpen, onClose }) => {
+export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ 
+  product, 
+  isOpen, 
+  onClose,
+  isFavorite = false,
+  onToggleFavorite
+}) => {
   const [copied, setCopied] = useState(false);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
 
@@ -20,7 +28,6 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
     }
   }, [isOpen, product?.id]);
 
-  // Fechar zoom ou modal com a tecla ESC
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -47,6 +54,12 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
     const phoneNumber = "5511999812223"; 
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
+  };
+
+  const handleToggleFavoriteClick = () => {
+    if (onToggleFavorite) {
+      onToggleFavorite(product.id);
+    }
   };
 
   const handleShareProduct = async () => {
@@ -78,7 +91,6 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
 
   return (
     <>
-      {/* Lightbox / Zoom da Imagem (Tamanho Real) */}
       {fullscreenImage && (
         <div 
           className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 backdrop-blur-2xl animate-in fade-in duration-300"
@@ -109,7 +121,6 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
         
         <div className="relative bg-white w-full max-w-6xl max-h-[95vh] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col lg:flex-row animate-in fade-in zoom-in duration-300">
           
-          {/* Botão de Fechar Superior (Fixo no Modal) */}
           <button 
             onClick={onClose} 
             className="absolute top-6 right-6 z-[110] p-3 bg-white/90 hover:bg-white text-gray-900 rounded-2xl shadow-xl transition-all active:scale-90 border border-gray-100"
@@ -117,7 +128,6 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
             <X className="w-6 h-6" />
           </button>
 
-          {/* Lado Esquerdo: Feed de Imagens */}
           <div className="w-full lg:w-[60%] overflow-y-auto bg-gray-50 border-r border-gray-100 scrollbar-hide">
             {hasImages ? (
               <div className="flex flex-col gap-2 p-2">
@@ -133,7 +143,6 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
                       className="w-full h-auto object-contain bg-gray-100 transition-transform duration-500 group-hover:scale-[1.02]"
                     />
                     
-                    {/* Overlay de Dica de Zoom */}
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
                        <div className="bg-white/90 backdrop-blur-sm p-4 rounded-full shadow-2xl transform scale-75 group-hover:scale-100 transition-transform">
                           <Maximize2 className="w-6 h-6 text-brand-purple" />
@@ -146,7 +155,6 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
                   </div>
                 ))}
                 
-                {/* Rodapé de final do feed */}
                 <div className="py-12 flex flex-col items-center justify-center text-gray-400 opacity-40">
                   <ImageIcon className="w-8 h-8 mb-2" />
                   <span className="text-[10px] font-black uppercase tracking-widest">Fim das fotos</span>
@@ -160,17 +168,30 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
             )}
           </div>
 
-          {/* Lado Direito: Informações e Ações */}
           <div className="w-full lg:w-[40%] p-8 md:p-12 overflow-y-auto flex flex-col bg-white">
             <div className="mb-8">
-              <div className="flex items-center gap-3 mb-6">
-                <span className="bg-brand-lightPurple text-brand-purple text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest border border-brand-purple/10">
-                  {product.category}
-                </span>
-                <span className="bg-orange-50 text-brand-orange text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest border border-brand-orange/10 flex items-center">
-                  <Tag className="w-3 h-3 mr-1.5" />
-                  {product.status}
-                </span>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <span className="bg-brand-lightPurple text-brand-purple text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest border border-brand-purple/10">
+                    {product.category}
+                  </span>
+                  <span className="bg-orange-50 text-brand-orange text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest border border-brand-orange/10 flex items-center">
+                    <Tag className="w-3 h-3 mr-1.5" />
+                    {product.status}
+                  </span>
+                </div>
+                
+                <button 
+                  onClick={handleToggleFavoriteClick}
+                  className={`p-3 rounded-2xl transition-all active:scale-90 border-2 ${
+                    isFavorite 
+                    ? 'bg-red-50 text-red-500 border-red-200' 
+                    : 'bg-gray-50 text-gray-400 border-gray-100 hover:text-red-500 hover:border-red-200'
+                  }`}
+                  title={isFavorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+                >
+                  <Heart className={`w-6 h-6 ${isFavorite ? 'fill-current' : ''}`} />
+                </button>
               </div>
               
               <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-6 leading-tight">{product.title}</h2>
@@ -201,28 +222,33 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
                 <MessageCircle className="w-7 h-7 mr-3" /> Chamar no Whats
               </button>
               
-              <button 
-                onClick={handleShareProduct} 
-                className={`w-full flex items-center justify-center gap-3 py-5 px-8 rounded-[1.5rem] font-black transition-all border-2 active:scale-95 uppercase tracking-widest text-sm ${
-                  copied 
-                  ? 'bg-green-50 border-green-200 text-green-600' 
-                  : 'bg-white border-gray-100 text-gray-400 hover:text-brand-purple hover:border-brand-purple hover:bg-brand-lightPurple/20'
-                }`}
-              >
-                {copied ? (
-                  <>
-                    <CheckCircle2 className="w-5 h-5" />
-                    <span>Link Copiado!</span>
-                  </>
-                ) : (
-                  <>
-                    <Share2 className="w-5 h-5" />
-                    <span>Compartilhar Link</span>
-                  </>
-                )}
-              </button>
+              <div className="grid grid-cols-2 gap-4">
+                <button 
+                  onClick={handleShareProduct} 
+                  className={`flex items-center justify-center gap-3 py-5 px-4 rounded-[1.5rem] font-black transition-all border-2 active:scale-95 uppercase tracking-[0.1em] text-[10px] ${
+                    copied 
+                    ? 'bg-green-50 border-green-200 text-green-600' 
+                    : 'bg-white border-gray-100 text-gray-400 hover:text-brand-purple hover:border-brand-purple hover:bg-brand-lightPurple/20'
+                  }`}
+                >
+                  {copied ? <CheckCircle2 className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
+                  <span>{copied ? 'Copiado' : 'Partilhar'}</span>
+                </button>
+
+                <button 
+                  onClick={handleToggleFavoriteClick}
+                  className={`flex items-center justify-center gap-3 py-5 px-4 rounded-[1.5rem] font-black transition-all border-2 active:scale-95 uppercase tracking-[0.1em] text-[10px] ${
+                    isFavorite 
+                    ? 'bg-red-50 border-red-200 text-red-500' 
+                    : 'bg-white border-gray-100 text-gray-400 hover:text-red-500 hover:border-red-200'
+                  }`}
+                >
+                  <Heart className={`w-4 h-4 ${isFavorite ? 'fill-current' : ''}`} />
+                  <span>{isFavorite ? 'Salvo' : 'Favoritar'}</span>
+                </button>
+              </div>
               
-              <div className="text-center">
+              <div className="text-center pt-4">
                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
                   Referência do Item: #{product.id}
                 </p>

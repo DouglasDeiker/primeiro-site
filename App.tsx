@@ -84,11 +84,9 @@ const App: React.FC = () => {
         const mappedProducts: Product[] = (productsData || []).map(p => {
           let safeImages: string[] = [];
           
-          // Lógica robusta para tratar coluna 'images' vindo do banco
           if (Array.isArray(p.images)) {
             safeImages = p.images.filter(img => typeof img === 'string' && img.length > 5);
           } else if (typeof p.images === 'string') {
-            // Caso venha como string única ou JSON string
             try {
               const parsed = JSON.parse(p.images);
               safeImages = Array.isArray(parsed) ? parsed : [p.images];
@@ -154,8 +152,22 @@ const App: React.FC = () => {
 
   const handleToggleFavorite = (productId: number) => {
     setFavorites(prev => {
-      const updated = prev.includes(productId) ? prev.filter(id => id !== productId) : [...prev, productId];
+      const isAdding = !prev.includes(productId);
+      const updated = isAdding ? [...prev, productId] : prev.filter(id => id !== productId);
       localStorage.setItem('barganha_favorites', JSON.stringify(updated));
+
+      // Notificação via WhatsApp quando alguém curte
+      if (isAdding) {
+        const product = products.find(p => p.id === productId);
+        if (product) {
+          const clientName = user?.name || 'Um cliente';
+          const message = `Olá! Eu (${clientName}) acabei de favoritar o seu produto *${product.title}* no site *Barganha Mogi*! ❤️ Ele ainda está disponível?`;
+          const phoneNumber = "5511999812223"; 
+          const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+          window.open(whatsappUrl, '_blank');
+        }
+      }
+
       return updated;
     });
   };
@@ -171,52 +183,33 @@ const App: React.FC = () => {
     handleNavigate('home');
   };
 
-  const renderPage = () => {
-    switch (currentPage) {
-      case 'home': return <Home onNavigate={handleNavigate} heroImages={heroImages} />;
-      case 'categories': return <Categories categories={dbCategoriesNames} onSelectCategory={(cat) => { setFilterCategory(cat); handleNavigate('offers'); }} />;
-      case 'offers': return <Offers products={products} categories={dbCategoriesNames} initialCategory={filterCategory} favorites={favorites} onToggleFavorite={handleToggleFavorite} onViewDetails={(p) => { setDetailProduct(p); setIsDetailModalOpen(true); }} searchFocusTrigger={searchIntentTrigger} />;
-      case 'favorites': return <Favorites products={products} favorites={favorites} onToggleFavorite={handleToggleFavorite} onNavigate={handleNavigate} onViewDetails={(p) => { setDetailProduct(p); setIsDetailModalOpen(true); }} />;
-      case 'sell': return <Sell categories={fullCategories} onAddProduct={(p) => { setProducts([p, ...products]); handleNavigate('offers'); }} onNavigate={handleNavigate} />;
-      case 'login': return <Login onNavigate={handleNavigate} onLoginSuccess={() => handleNavigate('home')} />;
-      case 'register': return <Register onNavigate={handleNavigate} onRegisterSuccess={() => handleNavigate('home')} />;
-      case 'help': return <HelpCenter onNavigate={handleNavigate} />;
-      case 'terms': return <Terms onNavigate={handleNavigate} />;
-      default: return <Home onNavigate={handleNavigate} heroImages={heroImages} />;
-    }
-  };
-
-  if (isInitializing) {
-    return (
-      <div className="min-h-screen bg-brand-darkPurple flex items-center justify-center">
-        <Loader2 className="w-10 h-10 animate-spin text-brand-orange" />
-      </div>
-    );
-  }
-
-  if (dbError) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6 text-center">
-        <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl max-w-2xl w-full">
-          <Database className="w-16 h-16 text-red-500 mx-auto mb-6" />
-          <h2 className="text-2xl font-black mb-4">Erro de Configuração</h2>
-          <div className="bg-red-50 p-6 rounded-2xl mb-8 border border-red-100 text-left font-mono text-sm overflow-auto max-h-40">
-            {dbError.message}
-          </div>
-          <button onClick={() => window.location.reload()} className="bg-brand-purple text-white px-8 py-4 rounded-xl font-bold flex items-center gap-2 mx-auto transition-transform active:scale-95">
-            <RefreshCcw className="w-5 h-5" /> Tentar Novamente
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 font-sans pb-20 md:pb-0 relative">
       <Navbar currentPage={currentPage} onNavigate={handleNavigate} onSearchClick={() => { setFilterCategory('Todos'); handleNavigate('offers'); setSearchIntentTrigger(t => t + 1); }} user={user} onLogout={handleLogout} />
-      <main className="flex-grow">{renderPage()}</main>
+      <main className="flex-grow">
+        {(() => {
+          switch (currentPage) {
+            case 'home': return <Home onNavigate={handleNavigate} heroImages={heroImages} />;
+            case 'categories': return <Categories categories={dbCategoriesNames} onSelectCategory={(cat) => { setFilterCategory(cat); handleNavigate('offers'); }} />;
+            case 'offers': return <Offers products={products} categories={dbCategoriesNames} initialCategory={filterCategory} favorites={favorites} onToggleFavorite={handleToggleFavorite} onViewDetails={(p) => { setDetailProduct(p); setIsDetailModalOpen(true); }} searchFocusTrigger={searchIntentTrigger} />;
+            case 'favorites': return <Favorites products={products} favorites={favorites} onToggleFavorite={handleToggleFavorite} onNavigate={handleNavigate} onViewDetails={(p) => { setDetailProduct(p); setIsDetailModalOpen(true); }} />;
+            case 'sell': return <Sell categories={fullCategories} onAddProduct={(p) => { setProducts([p, ...products]); handleNavigate('offers'); }} onNavigate={handleNavigate} />;
+            case 'login': return <Login onNavigate={handleNavigate} onLoginSuccess={() => handleNavigate('home')} />;
+            case 'register': return <Register onNavigate={handleNavigate} onRegisterSuccess={() => handleNavigate('home')} />;
+            case 'help': return <HelpCenter onNavigate={handleNavigate} />;
+            case 'terms': return <Terms onNavigate={handleNavigate} />;
+            default: return <Home onNavigate={handleNavigate} heroImages={heroImages} />;
+          }
+        })()}
+      </main>
       <Footer onNavigate={handleNavigate} />
-      <ProductDetailsModal isOpen={isDetailModalOpen} product={detailProduct} onClose={() => setIsDetailModalOpen(false)} />
+      <ProductDetailsModal 
+        isOpen={isDetailModalOpen} 
+        product={detailProduct} 
+        onClose={() => setIsDetailModalOpen(false)} 
+        isFavorite={detailProduct ? favorites.includes(detailProduct.id) : false}
+        onToggleFavorite={handleToggleFavorite}
+      />
       <MobileNav currentPage={currentPage} onNavigate={handleNavigate} onSearchClick={() => { setFilterCategory('Todos'); handleNavigate('offers'); setSearchIntentTrigger(t => t + 1); }} />
     </div>
   );
