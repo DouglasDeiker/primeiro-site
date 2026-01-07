@@ -8,12 +8,10 @@ import { Offers } from './pages/Offers';
 import { Favorites } from './pages/Favorites';
 import { HelpCenter } from './pages/HelpCenter';
 import { Terms } from './pages/Terms';
-import { Sell } from './pages/Sell';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Footer } from './components/Footer';
 import { ProductDetailsModal } from './components/ProductDetailsModal';
-import { Loader2, Database, RefreshCcw, AlertCircle } from 'lucide-react';
 import { Product, User, Category, ItemStatus } from './types';
 import { CATEGORIES } from './constants';
 import { supabase, isDatabaseConfigured } from './lib/supabase';
@@ -156,7 +154,6 @@ const App: React.FC = () => {
       const updated = isAdding ? [...prev, productId] : prev.filter(id => id !== productId);
       localStorage.setItem('barganha_favorites', JSON.stringify(updated));
 
-      // Notificação via WhatsApp quando alguém curte
       if (isAdding) {
         const product = products.find(p => p.id === productId);
         if (product) {
@@ -193,7 +190,6 @@ const App: React.FC = () => {
             case 'categories': return <Categories categories={dbCategoriesNames} onSelectCategory={(cat) => { setFilterCategory(cat); handleNavigate('offers'); }} />;
             case 'offers': return <Offers products={products} categories={dbCategoriesNames} initialCategory={filterCategory} favorites={favorites} onToggleFavorite={handleToggleFavorite} onViewDetails={(p) => { setDetailProduct(p); setIsDetailModalOpen(true); }} searchFocusTrigger={searchIntentTrigger} />;
             case 'favorites': return <Favorites products={products} favorites={favorites} onToggleFavorite={handleToggleFavorite} onNavigate={handleNavigate} onViewDetails={(p) => { setDetailProduct(p); setIsDetailModalOpen(true); }} />;
-            case 'sell': return <Sell categories={fullCategories} onAddProduct={(p) => { setProducts([p, ...products]); handleNavigate('offers'); }} onNavigate={handleNavigate} />;
             case 'login': return <Login onNavigate={handleNavigate} onLoginSuccess={() => handleNavigate('home')} />;
             case 'register': return <Register onNavigate={handleNavigate} onRegisterSuccess={() => handleNavigate('home')} />;
             case 'help': return <HelpCenter onNavigate={handleNavigate} />;

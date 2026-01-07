@@ -80,7 +80,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <div className="flex items-center gap-3 ml-2 md:ml-4 pl-2 md:pl-4 border-l border-gray-100">
                 <div className="hidden lg:block text-right">
                   <p className="text-xs font-black text-gray-900 leading-none">{user.name}</p>
-                  <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mt-1">Vendedor</p>
+                  <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mt-1">Visitante</p>
                 </div>
                 <button onClick={onLogout} className="p-2 bg-gray-50 text-gray-400 hover:text-red-500 rounded-xl transition-all shadow-sm border border-gray-100" title="Sair">
                   <LogOut className="w-4 h-4 md:w-5 md:h-5" />
