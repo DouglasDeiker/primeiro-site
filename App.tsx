@@ -186,7 +186,15 @@ const App: React.FC = () => {
       <main className="flex-grow">
         {(() => {
           switch (currentPage) {
-            case 'home': return <Home onNavigate={handleNavigate} heroImages={heroImages} />;
+            case 'home': return <Home 
+              onNavigate={handleNavigate} 
+              heroImages={heroImages} 
+              products={products} 
+              categories={dbCategoriesNames} 
+              onViewProductDetails={(p) => { setDetailProduct(p); setIsDetailModalOpen(true); }}
+              onToggleFavorite={handleToggleFavorite}
+              favorites={favorites}
+            />;
             case 'categories': return <Categories categories={dbCategoriesNames} onSelectCategory={(cat) => { setFilterCategory(cat); handleNavigate('offers'); }} />;
             case 'offers': return <Offers products={products} categories={dbCategoriesNames} initialCategory={filterCategory} favorites={favorites} onToggleFavorite={handleToggleFavorite} onViewDetails={(p) => { setDetailProduct(p); setIsDetailModalOpen(true); }} searchFocusTrigger={searchIntentTrigger} />;
             case 'favorites': return <Favorites products={products} favorites={favorites} onToggleFavorite={handleToggleFavorite} onNavigate={handleNavigate} onViewDetails={(p) => { setDetailProduct(p); setIsDetailModalOpen(true); }} />;
@@ -194,7 +202,15 @@ const App: React.FC = () => {
             case 'register': return <Register onNavigate={handleNavigate} onRegisterSuccess={() => handleNavigate('home')} />;
             case 'help': return <HelpCenter onNavigate={handleNavigate} />;
             case 'terms': return <Terms onNavigate={handleNavigate} />;
-            default: return <Home onNavigate={handleNavigate} heroImages={heroImages} />;
+            default: return <Home 
+              onNavigate={handleNavigate} 
+              heroImages={heroImages} 
+              products={products} 
+              categories={dbCategoriesNames} 
+              onViewProductDetails={(p) => { setDetailProduct(p); setIsDetailModalOpen(true); }}
+              onToggleFavorite={handleToggleFavorite}
+              favorites={favorites}
+            />;
           }
         })()}
       </main>
